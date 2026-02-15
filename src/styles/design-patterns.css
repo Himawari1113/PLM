@@ -1,0 +1,45 @@
+/* Design resource switcher
+   Add new patterns by appending [data-design-pattern="..."] blocks. */
+
+:root[data-design-pattern="default"] {
+  --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, system-ui, 'Ubuntu', 'Fira Sans', sans-serif;
+  --font-family-heading: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+:root[data-design-pattern="aegov"] {
+  --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, system-ui, 'Ubuntu', 'Fira Sans', sans-serif;
+  --font-family-heading: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  --color-primary: #A4832A;
+  --color-primary-hover: #8D6C16;
+  --color-primary-dark: #6E530D;
+  --color-primary-light: #F6EFD9;
+  --color-primary-gradient: linear-gradient(135deg, #C5A756 0%, #8D6C16 100%);
+
+  --color-secondary: #1F2937;
+  --color-secondary-hover: #111827;
+  --color-secondary-light: #F3F4F6;
+
+  --color-accent: #0E7490;
+  --color-accent-hover: #155E75;
+  --color-accent-light: #E0F2FE;
+
+  --color-bg: #F8F7F4;
+  --color-bg-secondary: #F1EFE8;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #FAF9F6;
+
+  --color-border: #E7E2D5;
+  --color-border-light: #F2EEE3;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+}
+
+:root[data-design-pattern="aegov"] .bp-card,
+:root[data-design-pattern="aegov"] .bp-table,
+:root[data-design-pattern="aegov"] .bp-summary {
+  border-color: var(--color-border);
+}

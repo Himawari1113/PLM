@@ -1,0 +1,54 @@
+services:
+  db:
+    container_name: plm-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: plm_user
+      POSTGRES_PASSWORD: plm_password
+      POSTGRES_DB: plm_db
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U plm_user -d plm_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://plm_user:plm_password@db:5432/plm_db
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: plm-secret-key-change-in-production
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+  pgadmin:
+    container_name: plm-pgadmin
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5056:80'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

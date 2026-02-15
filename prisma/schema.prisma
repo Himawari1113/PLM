@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DESIGNER
+  MERCHANDISER
+  VIEWER
+}
+
+enum ProductStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  IN_PRODUCTION
+  COMPLETED
+  CANCELLED
+}
+
+enum MaterialType {
+  FABRIC
+  TRIM
+  PACKAGING
+  OTHER
+}
+
+enum MaterialCategory {
+  MAIN_FABRIC
+  SUB_FABRIC
+  SUB_MATERIAL
+}
+
+enum SampleType {
+  PROTO
+  SALES_SAMPLE
+  PP_SAMPLE
+  TOP
+  OTHER
+}
+
+enum SampleStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum SampleMaterialKind {
+  MAIN_FABRIC
+  SUB_FABRIC
+  SUB_MATERIAL
+}
+
+enum CostStatus {
+  ESTIMATING
+  QUOTED
+  NEGOTIATING
+  APPROVED
+  REJECTED
+}
+
+enum ColorType {
+  SOLID
+  PATTERN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Season {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  year        Int
+  term        String       // SS, AW, etc.
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  collections Collection[]
+  trendItems  TrendItem[]
+  samples     Sample[]
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  seasonId    String
+  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  styleNumber  String        @unique
+  name         String
+  divisionId   Int?
+  division     DivisionMaster? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  category     String
+  description  String?
+  status       ProductStatus @default(DRAFT)
+  targetPrice  Float?
+  collectionId String?
+  collection   Collection?   @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  supplierId   String?
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  samples      Sample[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model DivisionMaster {
+  id         Int         @id
+  name       String      @unique
+  products   Product[]
+  sizeGroups SizeGroup[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Material {
+  id                String             @id @default(cuid())
+  materialCode      String?
+  name              String
+  type              MaterialType       @default(FABRIC)
+  materialCategory  MaterialCategory?
+  composition       String?
+  color             String?            // legacy - use materialColors instead
+  weight            String?
+  width             String?
+  unitPrice         Float?
+  unit              String?            // m, yard, pcs, etc.
+  description       String?
+  bomItems          BomItem[]
+  supplierMaterials SupplierMaterial[]
+  materialColors    MaterialColor[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model MaterialColor {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  colorId    String
+  color      Color    @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([materialId, colorId])
+}
+
+model BomItem {
+  id         String   @id @default(cuid())
+  sampleId   String
+  sample     Sample   @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  quantity   Float
+  unit       String?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([sampleId, materialId])
+}
+
+model Supplier {
+  id                String             @id @default(cuid())
+  name              String
+  contactPerson     String?
+  email             String?
+  phone             String?
+  address           String?
+  country           String?
+  description       String?
+  products          Product[]
+  samples           Sample[]
+  supplierMaterials SupplierMaterial[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model SupplierMaterial {
+  id         String   @id @default(cuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  leadTime   Int?     // days
+  moq        Int?     // minimum order quantity
+  unitPrice  Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([supplierId, materialId])
+}
+
+model Sample {
+  id                  String       @id @default(cuid())
+  sampleName          String
+  sampleNumber        String
+  sampleType          SampleType   @default(PROTO)
+  status              SampleStatus @default(PENDING)
+  sizeSpec            String?
+  color               String?
+  remarks             String?
+  imageUrl            String?
+  measurements        String?
+  sewingSpec          String?
+  factoryName         String?
+  dueDate             DateTime?
+  shippingDestination String?
+  fittingComment      String?
+  year                Int?
+  seasonId            String?
+  season              Season?      @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  division            String?
+  subCategory         String?
+  supplierId          String?
+  supplier            Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  illustratorFile     String?
+  patternCadFile      String?
+  productOverride     String?
+  productId           String
+  product             Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bomItems            BomItem[]
+  costs               Cost[]
+  sampleColors        SampleColor[]
+  sizeMeasurements    SampleMeasurement[]
+  sampleMaterials     SampleMaterial[]
+  milestoneProgresses SampleMilestoneProgress[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model Cost {
+  id             String     @id @default(cuid())
+  costVersion    String
+  status         CostStatus @default(ESTIMATING)
+  currency       String     @default("USD")
+  fobPrice       Decimal?   @db.Decimal(10, 2)
+  materialCost   Decimal?   @db.Decimal(10, 2)
+  processingCost Decimal?   @db.Decimal(10, 2)
+  trimCost       Decimal?   @db.Decimal(10, 2)
+  profitMargin   Float?
+  moq            Int?
+  leadTimeDays   Int?
+  remarks        String?
+  sampleId       String
+  sample         Sample     @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model TrendItem {
+  id          String   @id @default(cuid())
+  title       String
+  url         String?
+  imageUrl    String?
+  description String?
+  tags        String[] @default([])
+  seasonId    String?
+  season      Season?  @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Color {
+  id          String    @id @default(cuid())
+  colorCode   String
+  colorName   String
+  pantoneCode String?
+  pantoneName String?
+  rgbValue    String?
+  colorImage  String?
+  colorType   ColorType @default(SOLID)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  samples        SampleColor[]
+  materialColors MaterialColor[]
+
+  @@index([colorCode])
+  @@index([colorName])
+}
+
+model SampleColor {
+  id        String   @id @default(cuid())
+  sampleId  String
+  sample    Sample   @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  colorId   String
+  color     Color    @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  status    String   @default("IN_PROGRESS")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sampleId, colorId])
+  @@index([colorId])
+}
+
+model SizeGroup {
+  id          String       @id @default(cuid())
+  name        String
+  divisionId  Int
+  division    DivisionMaster @relation(fields: [divisionId], references: [id])
+  subCategory String?
+  isActive    Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  sizes       SizeMaster[]
+
+  @@unique([divisionId, name])
+  @@index([divisionId, sortOrder])
+  @@index([divisionId, subCategory])
+}
+
+model SizeMaster {
+  id           String     @id @default(cuid())
+  sizeGroupId  String
+  sizeGroup    SizeGroup  @relation(fields: [sizeGroupId], references: [id], onDelete: Cascade)
+  sizeCode     String
+  sizeName     String     @default("")
+  sortOrder    Int        @default(0)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  measurements SampleMeasurement[]
+
+  @@unique([sizeGroupId, sizeCode])
+  @@index([sizeGroupId, sortOrder])
+}
+
+model SampleMeasurement {
+  id           String      @id @default(cuid())
+  sampleId     String
+  sample       Sample      @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  sizeMasterId String?
+  sizeMaster   SizeMaster? @relation(fields: [sizeMasterId], references: [id], onDelete: SetNull)
+  sizeCode     String
+  part         String
+  value        String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([sampleId, sizeCode])
+  @@index([sizeMasterId])
+}
+
+model SampleMaterial {
+  id            String             @id @default(cuid())
+  sampleId      String
+  sample        Sample             @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  kind          SampleMaterialKind
+  materialCode  String?
+  materialName  String?
+  costPerUnit   Float?
+  fabricSupplier String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([sampleId, kind])
+}
+
+model Milestone {
+  id          String                  @id @default(cuid())
+  name        String
+  description String?
+  sortOrder   Int                     @default(0)
+  isActive    Boolean                 @default(true)
+  progresses  SampleMilestoneProgress[]
+  schedules   ScheduleMilestoneAssignment[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+}
+
+model SampleMilestoneProgress {
+  id          String    @id @default(cuid())
+  sampleId    String
+  sample      Sample    @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([sampleId, milestoneId])
+  @@index([milestoneId])
+}
+
+model Schedule {
+  id          String                        @id @default(cuid())
+  scheduleDate DateTime                     @db.Date
+  note        String?
+  milestones  ScheduleMilestoneAssignment[]
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+
+  @@unique([scheduleDate])
+}
+
+model ScheduleMilestoneAssignment {
+  id          String     @id @default(cuid())
+  scheduleId  String
+  schedule    Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  milestoneId String
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([scheduleId, milestoneId])
+  @@index([milestoneId])
+}
