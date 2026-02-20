@@ -10,7 +10,14 @@ import { useTranslations } from 'next-intl'
 export const Header = memo(function Header() {
   const { data: session } = useSession()
   const t = useTranslations()
-  const tConstants = useTranslations('constants')
+
+  // Role display names (always in English)
+  const roleDisplayNames: Record<string, string> = {
+    'ADMIN': 'Administrator',
+    'DESIGNER': 'Designer',
+    'MERCHANDISER': 'Merchandiser',
+    'VIEWER': 'Viewer',
+  }
 
   return (
     <header className="bp-header">
@@ -22,7 +29,7 @@ export const Header = memo(function Header() {
 
         <button
           className="bp-button bp-button--ghost bp-button--icon"
-          title={t('header.notifications')}
+          title="Notifications"
           style={{ position: 'relative' }}
         >
           <Bell style={{ width: 18, height: 18 }} />
@@ -47,7 +54,7 @@ export const Header = memo(function Header() {
             <div>
               <div className="bp-header__user-name">{session.user.name}</div>
               <div className="bp-header__user-role">
-                {session.user.role ? tConstants(`roles.${session.user.role}`) : ''}
+                {session.user.role ? roleDisplayNames[session.user.role] || session.user.role : ''}
               </div>
             </div>
           </div>
@@ -59,7 +66,7 @@ export const Header = memo(function Header() {
           style={{ color: 'var(--color-danger)' }}
         >
           <LogOut style={{ width: 16, height: 16 }} />
-          {t('common.logout')}
+          Logout
         </button>
       </div>
     </header>

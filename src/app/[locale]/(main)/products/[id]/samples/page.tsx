@@ -19,9 +19,8 @@ interface SampleListItem {
   imageUrl?: string | null
   sampleType: string
   status: string
-  factoryName: string | null
+  mainFactoryCode: string | null
   dueDate: string | null
-  color: string | null
   costs: { fobPrice: string | null; currency: string }[]
   _count: { costs: number }
   updatedAt: string
@@ -106,7 +105,7 @@ export default function SamplesPage() {
       render: (s) => <span className={`bp-badge ${SAMPLE_STATUS_COLORS[s.status]}`}>{tConstants(`sampleStatus.${s.status}`)}</span>,
     },
     { key: 'color', label: t('color'), render: (s) => s.color || '-' },
-    { key: 'factoryName', label: t('factoryName'), render: (s) => s.factoryName || '-' },
+    { key: 'mainFactoryCode', label: 'Main Factory Code', render: (s) => s.mainFactoryCode || '-' },
     {
       key: 'dueDate',
       label: t('dueDate'),

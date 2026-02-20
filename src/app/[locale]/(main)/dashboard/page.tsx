@@ -36,16 +36,17 @@ export default function DashboardPage() {
   const tProducts = useTranslations('products')
   const tConstants = useTranslations('constants')
 
-  const { selectedYear } = useYearFilter()
+  const { selectedYear, selectedSeason } = useYearFilter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (selectedYear !== null) params.set('year', String(selectedYear))
+    if (selectedSeason !== null) params.set('season', String(selectedSeason))
     fetch(`/api/dashboard/stats?${params.toString()}`)
       .then((r) => r.json())
       .then(setStats)
-  }, [selectedYear])
+  }, [selectedYear, selectedSeason])
 
   if (!stats) {
     return (

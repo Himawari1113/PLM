@@ -5,10 +5,16 @@ import { Prisma } from '@prisma/client'
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const yearParam = searchParams.get('year')
+  const seasonParam = searchParams.get('season')
   const yearFilter = yearParam ? parseInt(yearParam, 10) : null
+  const seasonFilter = seasonParam ? parseInt(seasonParam, 10) : null
 
   const yearCondition = yearFilter
     ? Prisma.sql`AND s.year = ${yearFilter}`
+    : Prisma.empty
+  
+  const seasonCondition = seasonFilter
+    ? Prisma.sql`AND sm."seasonCode" = ${seasonFilter}`
     : Prisma.empty
 
   const [milestones, samples, progresses] = await Promise.all([
@@ -37,7 +43,8 @@ export async function GET(req: NextRequest) {
         p.name as "productName"
       FROM "Sample" s
       JOIN "Product" p ON p.id = s."productId"
-      WHERE 1=1 ${yearCondition}
+      LEFT JOIN "SeasonMaster" sm ON sm.id = s."seasonId"
+      WHERE 1=1 ${yearCondition} ${seasonCondition}
       ORDER BY s."updatedAt" DESC
     `),
     prisma.$queryRaw<Array<{

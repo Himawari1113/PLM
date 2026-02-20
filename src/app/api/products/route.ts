@@ -18,8 +18,7 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
     const divisionId = searchParams.get('divisionId') || ''
-
-    const year = searchParams.get('year') || ''
+    const seasonCode = searchParams.get('season') || ''
 
     const where: any = {}
     if (search) {
@@ -31,8 +30,12 @@ export async function GET(req: NextRequest) {
     if (category) where.category = category
     if (status) where.status = status
     if (divisionId) where.divisionId = Number(divisionId)
-    if (year) {
-      where.collection = { season: { year: parseInt(year, 10) } }
+    if (seasonCode) {
+      where.collection = {
+        season: {
+          seasonCode: parseInt(seasonCode),
+        },
+      }
     }
 
     const products = await prisma.product.findMany({

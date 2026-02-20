@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://plm_user:plm_password@db:5432/plm_db
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: plm-secret-key-change-in-production
+      FREEPIK_API_KEY: FPSX0ddf54abb7c7a1750828129b9b69eae2
     depends_on:
       db:
         condition: service_healthy

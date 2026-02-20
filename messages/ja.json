@@ -25,16 +25,20 @@
   "nav": {
     "dashboard": "ダッシュボード",
     "products": "商品管理",
+    "linePlan": "Line Plan",
     "materials": "素材管理",
     "colors": "カラー",
     "milestones": "マイルストン",
     "sizeMasters": "サイズマスタ",
+    "sizes": "Sizes",
     "progressManagement": "進捗管理",
+    "sampleProgress": "Sample Progress",
     "schedule": "スケジュール",
     "suppliers": "サプライヤー",
     "seasons": "シーズン",
     "trends": "トレンド",
     "samples": "サンプル",
+    "financialPlan": "Financial Plan",
     "brandSub": "製品ライフサイクル管理"
   },
   "colors": {

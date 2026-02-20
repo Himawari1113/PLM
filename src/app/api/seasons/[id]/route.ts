@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const season = await prisma.season.findUnique({
+  const season = await prisma.seasonMaster.findUnique({
     where: { id: params.id },
     include: {
       collections: {
@@ -20,12 +20,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
-  const season = await prisma.season.update({
+  const season = await prisma.seasonMaster.update({
     where: { id: params.id },
     data: {
       name: body.name,
-      year: body.year,
-      term: body.term,
+      seasonCode: body.seasonCode,
+      seasonName: body.seasonName,
       description: body.description || null,
       startDate: body.startDate ? new Date(body.startDate) : null,
       endDate: body.endDate ? new Date(body.endDate) : null,
@@ -35,6 +35,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.season.delete({ where: { id: params.id } })
+  await prisma.seasonMaster.delete({ where: { id: params.id } })
   return NextResponse.json({ success: true })
 }

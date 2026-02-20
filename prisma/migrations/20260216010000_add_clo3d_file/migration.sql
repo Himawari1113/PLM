@@ -1,0 +1,2 @@
+ALTER TABLE "Sample" ADD COLUMN "clo3dFile" TEXT;
+ALTER TABLE "Sample" ADD COLUMN "clo3dFileName" TEXT;

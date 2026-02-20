@@ -4,14 +4,26 @@ import { prisma } from '@/lib/prisma'
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const yearParam = searchParams.get('year')
+  const seasonParam = searchParams.get('season')
   const yearFilter = yearParam ? parseInt(yearParam, 10) : null
+  const seasonFilter = seasonParam ? parseInt(seasonParam, 10) : null
 
   // Build where clauses
-  const productWhere: any = yearFilter
-    ? { collection: { season: { year: yearFilter } } }
-    : {}
+  const productWhere: any = {}
+  if (seasonFilter) {
+    productWhere.collection = {
+      season: {
+        seasonCode: seasonFilter,
+      },
+    }
+  }
   const sampleWhere: any = yearFilter ? { year: yearFilter } : {}
-  const seasonWhere: any = yearFilter ? { year: yearFilter } : {}
+  if (seasonFilter) {
+    sampleWhere.season = {
+      seasonCode: seasonFilter,
+    }
+  }
+  const seasonWhere: any = {}
 
   const [
     productCount,
@@ -29,7 +41,7 @@ export async function GET(req: NextRequest) {
     prisma.sample.count({ where: sampleWhere }),
     prisma.material.count(),
     prisma.supplier.count(),
-    prisma.season.count({ where: seasonWhere }),
+    prisma.seasonMaster.count({ where: seasonWhere }),
     prisma.product.groupBy({ by: ['status'], _count: true, where: productWhere }),
     prisma.product.groupBy({ by: ['category'], _count: true, where: productWhere }),
     prisma.sample.groupBy({ by: ['status'], _count: true, where: sampleWhere }),

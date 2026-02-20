@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       where: { id: params.id },
       include: {
         product: { select: { id: true, styleNumber: true, name: true } },
-        season: { select: { id: true, year: true, term: true, name: true } },
+        season: { select: { id: true, seasonName: true, seasonCode: true, name: true } },
         supplier: { select: { id: true, name: true } },
         sampleColors: {
           include: {
@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (typeof body.sampleName === 'string') data.sampleName = body.sampleName
     if (typeof body.sampleType === 'string') data.sampleType = body.sampleType
     if (typeof body.status === 'string') data.status = body.status
-    if (typeof body.factoryName === 'string') data.factoryName = body.factoryName
+    if (typeof body.mainFactoryCode === 'string') data.mainFactoryCode = body.mainFactoryCode
     if (typeof body.division === 'string') data.division = body.division
     if (typeof body.subCategory === 'string') data.subCategory = body.subCategory
     if (typeof body.productId === 'string' && body.productId) data.productId = body.productId
@@ -80,10 +80,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (typeof body.seasonTerm === 'string') {
       const seasonTerm = body.seasonTerm.toUpperCase()
-      const seasonYear = Number.isFinite(Number(data.year)) ? Number(data.year) : current?.year || undefined
-      if (seasonYear && (seasonTerm === 'SS' || seasonTerm === 'FW')) {
-        const season = await prisma.season.findFirst({
-          where: { year: seasonYear, term: seasonTerm },
+      if (seasonTerm === 'SS' || seasonTerm === 'FW') {
+        const season = await prisma.seasonMaster.findFirst({
+          where: { seasonName: seasonTerm },
           select: { id: true },
         })
         if (season) data.seasonId = season.id
@@ -99,7 +98,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data,
       include: {
         product: { select: { id: true, styleNumber: true, name: true } },
-        season: { select: { id: true, year: true, term: true, name: true } },
+        season: { select: { id: true, seasonName: true, seasonCode: true, name: true } },
         costs: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     })

@@ -6,13 +6,12 @@ import { SEASON_TERMS } from '@/lib/constants'
 import { Plus, Calendar, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { BpPageHeader } from '@/components/common'
-import { useYearFilter } from '@/contexts/YearFilterContext'
 
 interface Season {
   id: string
   name: string
-  year: number
-  term: string
+  seasonCode: number
+  seasonName: string
   description: string | null
   collections: { id: string; name: string; _count: { products: number } }[]
 }
@@ -21,19 +20,16 @@ export default function SeasonsPage() {
   const t = useTranslations('seasons')
   const tCommon = useTranslations('common')
   const tConstants = useTranslations('constants')
-  const { selectedYear } = useYearFilter()
   const [seasons, setSeasons] = useState<Season[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', year: new Date().getFullYear(), term: 'SS', description: '' })
+  const [form, setForm] = useState({ name: '', seasonCode: 0, seasonName: 'SS', description: '' })
 
   const fetchSeasons = async () => {
-    const params = new URLSearchParams()
-    if (selectedYear !== null) params.set('year', String(selectedYear))
-    const res = await fetch(`/api/seasons?${params.toString()}`)
+    const res = await fetch('/api/seasons')
     setSeasons(await res.json())
   }
 
-  useEffect(() => { fetchSeasons() }, [selectedYear])
+  useEffect(() => { fetchSeasons() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +38,7 @@ export default function SeasonsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-    setForm({ name: '', year: new Date().getFullYear(), term: 'SS', description: '' })
+    setForm({ name: '', seasonCode: 0, seasonName: 'SS', description: '' })
     setShowForm(false)
     fetchSeasons()
   }
@@ -50,7 +46,7 @@ export default function SeasonsPage() {
   return (
     <>
       <BpPageHeader
-        title={t('title')}
+        title="Season Master"
         titleMeta={<span className="bp-page__subtitle">{seasons.length} {tCommon('items')}</span>}
         actions={
           <button className="bp-button bp-button--primary" onClick={() => setShowForm(!showForm)}>
@@ -78,18 +74,18 @@ export default function SeasonsPage() {
                 />
               </div>
               <div className="bp-form-group">
-                <label className="bp-label">{t('year')}</label>
+                <label className="bp-label">Season Code</label>
                 <input
                   className="bp-input"
                   type="number"
-                  value={form.year}
-                  onChange={(e) => setForm({ ...form, year: parseInt(e.target.value) })}
+                  value={form.seasonCode}
+                  onChange={(e) => setForm({ ...form, seasonCode: parseInt(e.target.value) || 0 })}
                   required
                 />
               </div>
               <div className="bp-form-group">
-                <label className="bp-label">{t('term')}</label>
-                <select className="bp-select" value={form.term} onChange={(e) => setForm({ ...form, term: e.target.value })}>
+                <label className="bp-label">Season Name</label>
+                <select className="bp-select" value={form.seasonName} onChange={(e) => setForm({ ...form, seasonName: e.target.value })}>
                   {SEASON_TERMS.map((term) => (
                     <option key={term.value} value={term.value}>{tConstants(`seasonTerms.${term.value}`)}</option>
                   ))}
@@ -118,7 +114,10 @@ export default function SeasonsPage() {
             <div className="bp-card" style={{ cursor: 'pointer', transition: 'all var(--transition-fast)' }}>
               <div className="bp-card__header">
                 <h3 className="bp-card__title">{season.name}</h3>
-                <Calendar style={{ width: 20, height: 20, color: 'var(--color-gray-400)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-gray-500)' }}>Code: {season.seasonCode}</span>
+                  <Calendar style={{ width: 20, height: 20, color: 'var(--color-gray-400)' }} />
+                </div>
               </div>
               <div className="bp-card__content">
                 {season.description && (

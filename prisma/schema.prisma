@@ -81,19 +81,19 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model Season {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  year        Int
-  term        String       // SS, AW, etc.
-  description String?
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  collections Collection[]
-  trendItems  TrendItem[]
-  samples     Sample[]
+model SeasonMaster {
+  id           String       @id @default(cuid())
+  name         String       @unique
+  seasonCode   Int          @unique
+  seasonName   String       // SS, FW
+  description  String?
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  collections  Collection[]
+  trendItems   TrendItem[]
+  samples      Sample[]
 }
 
 model Collection {
@@ -101,7 +101,7 @@ model Collection {
   name        String
   description String?
   seasonId    String
-  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  season      SeasonMaster @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -127,12 +127,13 @@ model Product {
 }
 
 model DivisionMaster {
-  id         Int         @id
-  name       String      @unique
-  products   Product[]
-  sizeGroups SizeGroup[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id           Int         @id
+  name         String      @unique
+  divisionCode Int         @unique @default(0)
+  products     Product[]
+  sizeGroups   SizeGroup[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model Material {
@@ -215,28 +216,27 @@ model SupplierMaterial {
 model Sample {
   id                  String       @id @default(cuid())
   sampleName          String
-  sampleNumber        String
+  sampleNumber        String       @unique
   sampleType          SampleType   @default(PROTO)
   status              SampleStatus @default(PENDING)
   sizeSpec            String?
-  color               String?
   remarks             String?
   imageUrl            String?
-  measurements        String?
-  sewingSpec          String?
-  factoryName         String?
+  mainFactoryCode     String?
   dueDate             DateTime?
   shippingDestination String?
   fittingComment      String?
   year                Int?
   seasonId            String?
-  season              Season?      @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  season              SeasonMaster? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   division            String?
   subCategory         String?
   supplierId          String?
   supplier            Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   illustratorFile     String?
   patternCadFile      String?
+  clo3dFile           String?
+  clo3dFileName       String?
   productOverride     String?
   productId           String
   product             Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -246,6 +246,7 @@ model Sample {
   sizeMeasurements    SampleMeasurement[]
   sampleMaterials     SampleMaterial[]
   milestoneProgresses SampleMilestoneProgress[]
+  comments            SampleComment[]
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 }
@@ -277,7 +278,7 @@ model TrendItem {
   description String?
   tags        String[] @default([])
   seasonId    String?
-  season      Season?  @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  season      SeasonMaster? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -428,4 +429,95 @@ model ScheduleMilestoneAssignment {
 
   @@unique([scheduleId, milestoneId])
   @@index([milestoneId])
+}
+
+// ── WSSI / OTB Planning ──────────────────────────
+
+model OtbPlanning {
+  id              String   @id @default(cuid())
+  styleNumber     String
+  styleName       String   @default("")
+  category        String   @default("")
+  season          Int      @default(1)
+  divisionName    String   @default("")
+  totalPlanQty    Int      @default(0)
+  weekNumber      Int
+  year            Int
+  salesQty        Int      @default(0)
+  storeInvQty     Int      @default(0)
+  whInvQty        Int      @default(0)
+  intakeQty       Int      @default(0)
+  otb             Int      @default(0)
+  salesStartDate  DateTime? @db.Date
+  finalAllocDate  DateTime? @db.Date
+  salesEndDate    DateTime? @db.Date
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([styleNumber, weekNumber, year])
+  @@index([year])
+  @@index([styleNumber])
+}
+
+// ── Merchandize Financial Planning ───────────────
+
+model FinancialPlanning {
+  id          String   @id @default(cuid())
+  year        Int
+  seasonCode  Int      @default(1)
+  divisionName String  @default("")
+  month       Int
+  revenue     Float    @default(0)
+  gmPercent   Float    @default(0)
+  ebita       Float    @default(0)
+  inventory   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([year, seasonCode, divisionName, month])
+  @@index([year, seasonCode])
+}
+
+// ── Product Review (from Ozon) ───────────────────
+
+model ProductReview {
+  id              String   @id @default(cuid())
+  reviewId        String   @unique // Original: ID Отзыва
+  sku             String   // Original: SKU
+  articleNumber   String   // Original: Артикул
+  productName     String   // Original: Название товара
+  reviewText      String?  @db.Text // Original: Текст отзыва
+  publishedAt     DateTime // Original: Дата публикации отзыва
+  rating          Int      // Original: Рейтинг (1-5)
+  status          String   // Original: Статус (UNPROCESSED, etc)
+  commentCount    Int      @default(0) // Original: Количество комментариев у отзыва
+  orderStatus     String   // Original: Статус заказа (DELIVERED, etc)
+  ratingMember    Boolean  @default(false) // Original: Участник рейтинга
+  channel         String   @default("OZON") // Sales channel (OZON, etc)
+  summaryEn       String?  // AI-generated English summary
+  tags            String[] @default([]) // AI-generated classification tags
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([sku])
+  @@index([articleNumber])
+  @@index([rating])
+  @@index([publishedAt])
+  @@index([channel])
+}
+
+// ── Sample Comments ─────────────────────────────
+
+model SampleComment {
+  id          String   @id @default(cuid())
+  sampleId    String
+  sample      Sample   @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  userId      String   // User who made the comment
+  userName    String   // User's display name
+  comment     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sampleId])
+  @@index([createdAt])
 }

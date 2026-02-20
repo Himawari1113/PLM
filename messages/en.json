@@ -25,16 +25,20 @@
   "nav": {
     "dashboard": "Dashboard",
     "products": "Products",
+    "linePlan": "Line Plan",
     "materials": "Materials",
     "colors": "Colors",
     "milestones": "Milestones",
     "sizeMasters": "Size Masters",
+    "sizes": "Sizes",
     "progressManagement": "Progress Management",
+    "sampleProgress": "Sample Progress",
     "schedule": "Schedule",
     "suppliers": "Suppliers",
     "seasons": "Seasons",
     "trends": "Trends",
     "samples": "Samples",
+    "financialPlan": "Financial Plan",
     "brandSub": "Product Lifecycle"
   },
   "colors": {

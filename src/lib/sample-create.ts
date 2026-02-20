@@ -128,12 +128,21 @@ export async function createSampleWithNormalizedData(tx: Prisma.TransactionClien
   const year = Number.isFinite(yearValue) ? yearValue : nowYear
 
   let seasonTerm = normalizeSeasonTerm(sampleInfo.seasonTerm)
-  if (sampleInfo.seasonId) {
-    const season = await tx.season.findUnique({
-      where: { id: sampleInfo.seasonId },
-      select: { term: true },
+  let resolvedSeasonId: string | null = sampleInfo.seasonId || null
+
+  if (resolvedSeasonId) {
+    const season = await tx.seasonMaster.findUnique({
+      where: { id: resolvedSeasonId },
+      select: { seasonName: true },
     })
-    seasonTerm = normalizeSeasonTerm(season?.term || seasonTerm)
+    seasonTerm = normalizeSeasonTerm(season?.seasonName || seasonTerm)
+  } else if (seasonTerm) {
+    // Look up SeasonMaster by seasonName to auto-resolve seasonId
+    const season = await tx.seasonMaster.findFirst({
+      where: { seasonName: seasonTerm },
+      select: { id: true },
+    })
+    if (season) resolvedSeasonId = season.id
   }
 
   const sampleNumber = await generateSampleNumber(tx, year, seasonTerm)
@@ -157,22 +166,21 @@ export async function createSampleWithNormalizedData(tx: Prisma.TransactionClien
       sampleType: sampleInfo.sampleType || body.sampleType || 'PROTO',
       status: mapSampleStatus(sampleInfo.statusUi || body.statusUi, body.status),
       sizeSpec: specInfo.sizeInfo || null,
-      color: null,
       remarks: others.remark || null,
       imageUrl: sampleInfo.imageDataUrl || null,
-      measurements: null,
-      sewingSpec: specInfo.patternCadFileName || null,
-      factoryName: productionInfo.factoryName || null,
+      mainFactoryCode: productionInfo.mainFactoryCode || null,
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
       shippingDestination: productionInfo.originCountry || null,
       fittingComment: JSON.stringify(payloadSnapshot),
       year,
-      seasonId: sampleInfo.seasonId || null,
+      seasonId: resolvedSeasonId,
       division: sampleInfo.division || null,
       subCategory: sampleInfo.subCategory || null,
       supplierId: productionInfo.supplierId || null,
       illustratorFile: sampleInfo.illustratorDataUrl || null,
       patternCadFile: specInfo.patternCadDataUrl || null,
+      clo3dFile: specInfo.clo3dDataUrl || null,
+      clo3dFileName: specInfo.clo3dFileName || null,
       productOverride: sampleInfo.productOverride || null,
     },
   })
@@ -221,12 +229,9 @@ export async function updateSampleWithNormalizedData(
       sampleType: sampleInfo.sampleType || 'PROTO',
       status: mapSampleStatus(sampleInfo.statusUi, undefined),
       sizeSpec: specInfo.sizeInfo || null,
-      color: null,
       remarks: others.remark || null,
       imageUrl: sampleInfo.imageDataUrl || null,
-      measurements: null,
-      sewingSpec: specInfo.patternCadFileName || null,
-      factoryName: productionInfo.factoryName || null,
+      mainFactoryCode: productionInfo.mainFactoryCode || null,
       shippingDestination: productionInfo.originCountry || null,
       fittingComment: JSON.stringify(payloadSnapshot),
       year,
@@ -235,6 +240,8 @@ export async function updateSampleWithNormalizedData(
       supplierId: productionInfo.supplierId || null,
       illustratorFile: sampleInfo.illustratorDataUrl || null,
       patternCadFile: specInfo.patternCadDataUrl || null,
+      clo3dFile: specInfo.clo3dDataUrl || null,
+      clo3dFileName: specInfo.clo3dFileName || null,
       productOverride: sampleInfo.productOverride || null,
     },
   })

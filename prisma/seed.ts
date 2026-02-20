@@ -130,7 +130,7 @@ async function main() {
   await prisma.color.deleteMany()
   await prisma.sizeMaster.deleteMany()
   await prisma.sizeGroup.deleteMany()
-  await prisma.season.deleteMany()
+  await prisma.seasonMaster.deleteMany()
   await prisma.supplier.deleteMany()
   await prisma.user.deleteMany()
 
@@ -143,30 +143,26 @@ async function main() {
     ],
   })
 
-  console.log('Creating seasons...')
+  console.log('Creating season masters...')
   const seasons = [
-    { id: randomUUID(), year: 2025, term: 'SS', name: '2025SS' },
-    { id: randomUUID(), year: 2025, term: 'FW', name: '2025FW' },
-    { id: randomUUID(), year: 2026, term: 'SS', name: '2026SS' },
-    { id: randomUUID(), year: 2026, term: 'FW', name: '2026FW' },
-    { id: randomUUID(), year: 2027, term: 'SS', name: '2027SS' },
-    { id: randomUUID(), year: 2027, term: 'FW', name: '2027FW' },
+    { id: randomUUID(), seasonCode: 1, seasonName: 'SS', name: 'SS' },
+    { id: randomUUID(), seasonCode: 2, seasonName: 'FW', name: 'FW' },
   ]
-  await prisma.season.createMany({
+  await prisma.seasonMaster.createMany({
     data: seasons.map((s) => ({
       id: s.id,
       name: s.name,
-      year: s.year,
-      term: s.term,
-      description: `${s.year} ${s.term} season`,
+      seasonCode: s.seasonCode,
+      seasonName: s.seasonName,
+      description: `${s.seasonName} season`,
     })),
   })
 
   console.log('Creating division masters...')
   const divisionMasters = [
-    { id: 1, name: 'Mens' },
-    { id: 2, name: 'Womens' },
-    { id: 3, name: 'Kids/Baby' },
+    { id: 1, name: 'Mens', divisionCode: 3 },
+    { id: 2, name: 'Womens', divisionCode: 2 },
+    { id: 3, name: 'Kids/Baby', divisionCode: 1 },
   ]
   await prisma.divisionMaster.createMany({ data: divisionMasters, skipDuplicates: true })
 
@@ -175,8 +171,8 @@ async function main() {
     seasons.map((season) => ({
       id: randomUUID(),
       seasonId: season.id,
-      name: `${division} ${season.term} Core`,
-      description: `${division} ${season.year} ${season.term} core collection`,
+      name: `${division} ${season.seasonName} Core`,
+      description: `${division} ${season.seasonName} core collection`,
     })),
   )
   await prisma.collection.createMany({ data: collections })
@@ -308,26 +304,28 @@ async function main() {
   await prisma.sizeMaster.createMany({ data: sizeMasters, skipDuplicates: true })
 
   console.log('Creating products...')
+  const YEARS = [2025, 2026, 2027]
   const products = Array.from({ length: PRODUCT_TARGET }).map((_, i) => {
     const idx = i + 1
     const division = pick(DIVISIONS, i)
     const divisionId = division === 'Mens' ? 1 : division === 'Womens' ? 2 : 3
     const category = pick(CATEGORY_BY_DIVISION[division], i * 7)
     const season = pick(seasons, i * 5)
+    const year = pick(YEARS, i * 3)
     const supplier = pick(suppliers, i * 3)
     const collection = collections.find((c) => c.seasonId === season.id && c.name.startsWith(division)) || collections[0]
     return {
       id: randomUUID(),
-      styleNumber: `ST-${String(season.year).slice(2)}${season.term}-${String(idx).padStart(5, '0')}`,
+      styleNumber: `ST-${String(year).slice(2)}${season.seasonName}-${String(idx).padStart(5, '0')}`,
       name: `${category} Style ${String(idx).padStart(4, '0')}`,
       divisionId,
       category,
-      description: `${division} ${category.toLowerCase()} product for ${season.year} ${season.term}.`,
+      description: `${division} ${category.toLowerCase()} product for ${year} ${season.seasonName}.`,
       status: pick(STATUS_POOL, i) as ProductStatus,
       targetPrice: Number((rand(1500, 35000) / 100).toFixed(2)),
       collectionId: collection.id,
       supplierId: supplier.id,
-      createdAt: new Date(`${season.year}-${String(rand(1, 12)).padStart(2, '0')}-${String(rand(1, 28)).padStart(2, '0')}T00:00:00Z`),
+      createdAt: new Date(`${year}-${String(rand(1, 12)).padStart(2, '0')}-${String(rand(1, 28)).padStart(2, '0')}T00:00:00Z`),
     }
   })
   for (const set of chunk(products, 300)) {
@@ -347,7 +345,7 @@ async function main() {
     const division = linkedProduct.name.startsWith('Mens') ? 'Mens' : linkedProduct.name.startsWith('Womens') ? 'Womens' : 'Kids'
     const subCategory = linkedProduct.category
     const supplier = linkedProduct.supplierId ? suppliers.find((s) => s.id === linkedProduct.supplierId) : pick(suppliers, i)
-    const season = seasons.find((s) => s.year === year && s.term === seasonTerm) || seasons[0]
+    const season = seasons.find((s) => s.seasonName === seasonTerm) || seasons[0]
     return {
       id: randomUUID(),
       productId: linkedProduct.id,
@@ -358,7 +356,7 @@ async function main() {
       sizeSpec: `Size set: ${(SIZE_BY_CATEGORY[subCategory] || ['ONE']).join(', ')}`,
       remarks: `Generated sample note ${i + 1}`,
       imageUrl: toSketchDataUrl(subCategory, i),
-      factoryName: `Factory ${String(rand(1, 100)).padStart(3, '0')}`,
+      mainFactoryCode: `FC-${String(rand(1, 100)).padStart(3, '0')}`,
       shippingDestination: pick(countries, i),
       year,
       seasonId: season.id,
@@ -477,9 +475,9 @@ async function main() {
   console.log('Creating trend items...')
   const trendItems = seasons.map((season, i) => ({
     id: randomUUID(),
-    title: `${season.year} ${season.term} Trend Outlook ${i + 1}`,
+    title: `${season.seasonName} Trend Outlook ${i + 1}`,
     description: `English trend article for ${season.name}`,
-    tags: [season.term, String(season.year), 'market', 'style'],
+    tags: [season.seasonName, 'market', 'style'],
     seasonId: season.id,
   }))
   await prisma.trendItem.createMany({ data: trendItems })
@@ -505,13 +503,101 @@ async function main() {
     })),
   })
 
+  // ── OTB Planning Data ──────────────────────────
+  console.log('Seeding OTB Planning data...')
+  await prisma.otbPlanning.deleteMany()
+
+  const styleNames = [
+    'Classic Oxford Shirt', 'Slim Fit Chinos', 'Wool Blazer', 'Cotton Polo', 'Denim Jacket',
+    'Silk Blouse', 'A-Line Skirt', 'Cashmere Sweater', 'Cargo Pants', 'Leather Bomber',
+    'Linen Dress', 'Puffer Vest', 'Track Pants', 'Fleece Hoodie', 'Pleated Trousers',
+    'Striped Tee', 'Wrap Dress', 'Utility Jacket', 'Knit Cardigan', 'Wide Leg Jeans',
+    'Cropped Blazer', 'Rugby Shirt', 'Parka Coat', 'Henley Shirt', 'Jogger Pants',
+    'Maxi Dress', 'Tweed Jacket', 'Cable Knit Sweater', 'Bermuda Shorts', 'Field Jacket',
+  ]
+  const otbRecords: any[] = []
+  for (let si = 0; si < styleNames.length; si++) {
+    const styleNo = `STY-${String(si + 1).padStart(4, '0')}`
+    const div = DIVISIONS[si % 3]
+    const cat = CATEGORY_BY_DIVISION[div][si % CATEGORY_BY_DIVISION[div].length]
+    const totalPlan = rand(500, 5000)
+    const salesStart = rand(1, 10)
+    const salesEnd = rand(30, 48)
+    const allocDate = rand(salesStart, salesStart + 8)
+
+    for (let w = 1; w <= 52; w++) {
+      const isActive = w >= salesStart && w <= salesEnd
+      otbRecords.push({
+        id: randomUUID(),
+        styleNumber: styleNo,
+        styleName: styleNames[si],
+        category: cat,
+        season: si % 2 === 0 ? 1 : 2,
+        divisionName: div,
+        totalPlanQty: totalPlan,
+        weekNumber: w,
+        year: 2026,
+        salesQty: isActive ? rand(5, 80) : 0,
+        storeInvQty: isActive ? rand(10, 200) : 0,
+        whInvQty: isActive ? rand(20, 400) : 0,
+        intakeQty: isActive && w <= allocDate + 10 ? rand(10, 150) : 0,
+        otb: 0,
+        salesStartDate: new Date(2026, 0, 1 + (salesStart - 1) * 7),
+        finalAllocDate: new Date(2026, 0, 1 + (allocDate - 1) * 7),
+        salesEndDate: new Date(2026, 0, 1 + (salesEnd - 1) * 7),
+      })
+    }
+  }
+  for (const batch of chunk(otbRecords, 500)) {
+    await prisma.otbPlanning.createMany({ data: batch })
+  }
+  console.log(`  OTB: ${otbRecords.length} records (${styleNames.length} styles × 52 weeks)`)
+
+  // ── Financial Planning Data ─────────────────────
+  console.log('Seeding Financial Planning data...')
+  await prisma.financialPlanning.deleteMany()
+
+  const fpRecords: any[] = []
+  const fpDivisions = ['Mens', 'Womens', 'Kids']
+
+  for (const div of fpDivisions) {
+    for (const yr of [2025, 2026, 2027]) {
+      for (const season of [1, 2]) {
+        for (let mo = 1; mo <= 12; mo++) {
+          const baseRev = div === 'Mens' ? rand(80000, 200000) : div === 'Womens' ? rand(100000, 250000) : rand(30000, 90000)
+          const seasonMult = (season === 1 && mo >= 3 && mo <= 8) || (season === 2 && (mo >= 9 || mo <= 2)) ? 1.3 : 0.7
+          const rev = Math.round(baseRev * seasonMult)
+          const gm = rand(35, 65)
+          const ebitaRate = rand(5, 25) / 100
+          fpRecords.push({
+            id: randomUUID(),
+            year: yr,
+            seasonCode: season,
+            divisionName: div,
+            month: mo,
+            revenue: rev,
+            gmPercent: gm,
+            ebita: Math.round(rev * ebitaRate),
+            inventory: rand(50000, 300000),
+          })
+        }
+      }
+    }
+  }
+  for (const batch of chunk(fpRecords, 500)) {
+    await prisma.financialPlanning.createMany({ data: batch })
+  }
+  console.log(`  Financial Planning: ${fpRecords.length} records`)
+
   console.log(`Seed completed:
   - Products: ${PRODUCT_TARGET}
   - Samples: ${SAMPLE_TARGET}
   - Suppliers: ${SUPPLIER_TARGET}
   - Colors: ${COLOR_TARGET}
   - Materials: ${MATERIAL_TARGET}
-  - Size masters: ${sizeMasters.length}`)
+  - Size masters: ${sizeMasters.length}
+  - OTB Planning: ${otbRecords.length}
+  - Financial Planning: ${fpRecords.length}`)
 }
 
 main()

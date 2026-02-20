@@ -20,7 +20,7 @@ interface TrendItem {
 export default function TrendsPage() {
   const t = useTranslations('trends')
   const tCommon = useTranslations('common')
-  const { selectedYear } = useYearFilter()
+  const { selectedYear, selectedSeason } = useYearFilter()
   const [trends, setTrends] = useState<TrendItem[]>([])
   const [selectedTag, setSelectedTag] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -31,6 +31,7 @@ export default function TrendsPage() {
     const params = new URLSearchParams()
     if (selectedTag) params.set('tag', selectedTag)
     if (selectedYear !== null) params.set('year', String(selectedYear))
+    if (selectedSeason !== null) params.set('season', String(selectedSeason))
     const res = await fetch(`/api/trends?${params}`)
     setTrends(await res.json())
   }
@@ -39,8 +40,9 @@ export default function TrendsPage() {
     fetchTrends()
     const seasonParams = new URLSearchParams()
     if (selectedYear !== null) seasonParams.set('year', String(selectedYear))
+    if (selectedSeason !== null) seasonParams.set('season', String(selectedSeason))
     fetch(`/api/seasons?${seasonParams.toString()}`).then((r) => r.json()).then(setSeasons)
-  }, [selectedTag, selectedYear])
+  }, [selectedTag, selectedYear, selectedSeason])
 
   const allTags = Array.from(new Set(trends.flatMap((t) => t.tags)))
 

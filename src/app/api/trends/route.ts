@@ -5,14 +5,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const tag = searchParams.get('tag') || ''
   const seasonId = searchParams.get('seasonId') || ''
-
-  const yearParam = searchParams.get('year') || ''
+  const seasonCodeParam = searchParams.get('season') || ''
 
   const where: any = {}
   if (tag) where.tags = { has: tag }
   if (seasonId) where.seasonId = seasonId
-  if (yearParam) {
-    where.season = { year: parseInt(yearParam, 10) }
+  if (seasonCodeParam) {
+    const seasonCode = parseInt(seasonCodeParam, 10)
+    if (Number.isFinite(seasonCode)) {
+      where.season = {
+        seasonCode: seasonCode,
+      }
+    }
   }
 
   const trends = await prisma.trendItem.findMany({

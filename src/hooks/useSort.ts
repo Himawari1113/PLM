@@ -20,6 +20,11 @@ export function useSort<T>(data: T[], defaultKey: keyof T & string, defaultDir: 
     [sortKey]
   )
 
+  const resetSort = useCallback(() => {
+    setSortKey(defaultKey)
+    setSortDir(defaultDir)
+  }, [defaultKey, defaultDir])
+
   const sortedData = useMemo(() => {
     return [...data].sort((a, b) => {
       const aVal = a[sortKey]
@@ -40,5 +45,5 @@ export function useSort<T>(data: T[], defaultKey: keyof T & string, defaultDir: 
     })
   }, [data, sortKey, sortDir])
 
-  return { sortedData, sortKey, sortDir, toggleSort }
+  return { sortedData, sortKey, sortDir, toggleSort, resetSort }
 }

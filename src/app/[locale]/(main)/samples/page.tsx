@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Link } from '@/lib/navigation'
 import { SAMPLE_TYPE_LABELS } from '@/lib/constants'
-import { Plus, Search, FlaskConical } from 'lucide-react'
+import { Plus, Search, FlaskConical, LayoutGrid, List } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useDebounce } from '@/hooks/useDebounce'
 import { usePagination } from '@/hooks/usePagination'
@@ -18,12 +18,11 @@ interface SampleListItem {
   sampleNumber: string
   imageUrl?: string | null
   year?: number | null
-  season?: { term?: string | null; year?: number | null } | null
+  season?: { seasonName?: string | null } | null
   sampleType: string
   status: string
-  factoryName: string | null
+  mainFactoryCode: string | null
   dueDate: string | null
-  color: string | null
   division?: string | null
   subCategory?: string | null
   colorCount?: number
@@ -48,7 +47,7 @@ export default function GlobalSamplesPage() {
   const tCommon = useTranslations('common')
   const tConstants = useTranslations('constants')
 
-  const { selectedYear } = useYearFilter()
+  const { selectedYear, selectedSeason } = useYearFilter()
   const [samples, setSamples] = useState<SampleListItem[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -57,27 +56,30 @@ export default function GlobalSamplesPage() {
   const [draftRow, setDraftRow] = useState<SampleListItem | null>(null)
   const [creatingDraft, setCreatingDraft] = useState(false)
   const [products, setProducts] = useState<ProductOption[]>([])
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
 
   const debouncedSearch = useDebounce(search)
 
-  const fetchSamples = () => {
+  const fetchSamples = useCallback(() => {
     const params = new URLSearchParams()
     if (selectedYear !== null) params.set('year', String(selectedYear))
+    if (selectedSeason !== null) params.set('season', String(selectedSeason))
     fetch(`/api/samples?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
         setSamples(Array.isArray(data) ? data : [])
         setLoading(false)
       })
-  }
+  }, [selectedYear, selectedSeason])
 
   useEffect(() => {
     setLoading(true)
     fetchSamples()
     const productParams = new URLSearchParams()
     if (selectedYear !== null) productParams.set('year', String(selectedYear))
+    if (selectedSeason !== null) productParams.set('season', String(selectedSeason))
     fetch(`/api/products?${productParams.toString()}`).then((r) => r.json()).then((data) => setProducts(Array.isArray(data) ? data : []))
-  }, [selectedYear])
+  }, [selectedYear, selectedSeason])
 
   const filtered = useMemo(() => {
     return samples.filter((s) => {
@@ -94,47 +96,55 @@ export default function GlobalSamplesPage() {
     })
   }, [samples, debouncedSearch, statusFilter, typeFilter])
 
-  const { sortedData, sortKey, sortDir, toggleSort } = useSort(filtered, 'updatedAt', 'desc')
+  const { sortedData, sortKey, sortDir, toggleSort, resetSort } = useSort(filtered, 'year', 'asc')
   const { paginatedData, currentPage, totalPages, pageSize, goToPage } = usePagination(sortedData)
 
   const patchSample = async (id: string, patch: Record<string, any>) => {
+    // Optimistically update UI
     setSamples((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+    
     const res = await fetch(`/api/samples/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    if (!res.ok) return
-    const updated = await res.json()
-    setSamples((prev) => prev.map((x) => (x.id === id ? { ...x, ...updated, updatedAt: x.updatedAt } : x)))
+    
+    if (!res.ok) {
+      // Revert on error
+      fetchSamples()
+      return
+    }
+    
+    // Don't update state again to avoid re-sorting during inline edits
+    // The current state already has the updated values
   }
 
-  useEffect(() => {
-    if (!draftRow || !draftRow.__draft) return
-    const year = Number(draftRow.year)
-    const seasonTerm = draftRow.season?.term
-    const draftDivision = draftRow.division
-    const draftSubCategory = draftRow.subCategory
-    // All 4 fields must be filled before creating draft (triggering Sample No assignment)
-    if (!Number.isFinite(year) || !seasonTerm || !draftDivision || !draftSubCategory || creatingDraft) return
+  // Register draft when all 4 fields are filled — called explicitly from onChange handlers
+  const tryRegisterDraft = useCallback(async (draft: SampleListItem) => {
+    const year = Number(draft.year)
+    const seasonTerm = draft.season?.seasonName
+    const draftDivision = draft.division
+    const draftSubCategory = draft.subCategory
+    if (!Number.isFinite(year) || !seasonTerm || !draftDivision || !draftSubCategory) return
+    if (creatingDraft) return
 
-    const createDraftSample = async () => {
-      setCreatingDraft(true)
+    setCreatingDraft(true)
+    try {
       const payload = {
         productId: '',
         newSampleData: {
           sampleInfo: {
             year,
             seasonTerm,
-            sampleNameEn: draftRow.sampleName || '',
-            sampleType: draftRow.sampleType || 'PROTO',
+            sampleNameEn: draft.sampleName || '',
+            sampleType: draft.sampleType || 'PROTO',
             statusUi: 'REGISTERED',
             division: draftDivision,
             subCategory: draftSubCategory,
             productOverride: '',
           },
           specInfo: { colors: [], sizeInfo: '', sizeMeasurements: [] },
-          productionInfo: { supplierId: '', supplierName: '', factoryName: draftRow.factoryName || '', originCountry: '' },
+          productionInfo: { supplierId: '', supplierName: '', mainFactoryCode: draft.mainFactoryCode || '', originCountry: '' },
           materials: { mainFabric: {}, subFabrics: [], subMaterials: [] },
           others: { remark: '' },
         },
@@ -146,14 +156,14 @@ export default function GlobalSamplesPage() {
         body: JSON.stringify(payload),
       })
 
+      if (res.ok) {
+        setDraftRow(null)
+        fetchSamples()
+      }
+    } finally {
       setCreatingDraft(false)
-      if (!res.ok) return
-      setDraftRow(null)
-      fetchSamples()
     }
-
-    createDraftSample()
-  }, [draftRow, creatingDraft])
+  }, [creatingDraft, fetchSamples])
 
   const tableData = useMemo(
     () => (draftRow ? [draftRow, ...paginatedData] : paginatedData),
@@ -182,14 +192,14 @@ export default function GlobalSamplesPage() {
     const division = row.division || ''
     const subCategory = row.subCategory || ''
     const year = row.year
-    const term = row.season?.term || ''
+    const term = row.season?.seasonName || ''
     const q = String(query || '').trim().toLowerCase()
     return products
       .filter((p) => {
         const pDivision = p.division?.name || ''
         const pCategory = p.category || ''
         const pYear = p.collection?.season?.year
-        const pTerm = p.collection?.season?.term || ''
+        const pTerm = p.collection?.season?.seasonName || ''
         const matchDivision = !division || pDivision === division
         const matchCategory = !subCategory || pCategory === subCategory
         const matchYear = !year || pYear === year
@@ -206,7 +216,6 @@ export default function GlobalSamplesPage() {
       label: t('year'),
       width: '68px',
       render: (s) => {
-        // Lock only when sampleNumber is assigned (all 4 fields were filled and registration completed)
         const isLocked = !s.__draft && !!s.sampleNumber
         if (isLocked) {
           return <span style={{ paddingLeft: 12, paddingRight: 4, fontSize: 'calc(var(--font-size-sm))' }}>{s.year ?? '-'}</span>
@@ -220,7 +229,9 @@ export default function GlobalSamplesPage() {
             onChange={(e) => {
               const value = e.target.value ? Number(e.target.value) : null
               if (s.__draft) {
-                setDraftRow((prev) => (prev ? { ...prev, year: value } : prev))
+                const next = { ...s, year: value }
+                setDraftRow(next)
+                tryRegisterDraft(next)
               } else {
                 patchSample(s.id, { year: value })
               }
@@ -241,18 +252,20 @@ export default function GlobalSamplesPage() {
       render: (s) => {
         const isLocked = !s.__draft && !!s.sampleNumber
         if (isLocked) {
-          return <span style={{ padding: '0 6px', fontSize: 'calc(var(--font-size-sm))' }}>{s.season?.term || '-'}</span>
+          return <span style={{ padding: '0 6px', fontSize: 'calc(var(--font-size-sm))' }}>{s.season?.seasonName || '-'}</span>
         }
         return (
           <select
             className="bp-select"
-            value={s.season?.term || ''}
+            value={s.season?.seasonName || ''}
             onChange={(e) => {
-              const term = e.target.value
+              const seasonName = e.target.value
               if (s.__draft) {
-                setDraftRow((prev) => (prev ? { ...prev, season: { ...(prev.season || {}), term } } : prev))
+                const next = { ...s, season: { ...(s.season || {}), seasonName } }
+                setDraftRow(next)
+                tryRegisterDraft(next)
               } else {
-                patchSample(s.id, { seasonTerm: term })
+                patchSample(s.id, { seasonTerm: seasonName })
               }
             }}
           >
@@ -279,7 +292,9 @@ export default function GlobalSamplesPage() {
             onChange={(e) => {
               const value = e.target.value
               if (s.__draft) {
-                setDraftRow((prev) => (prev ? { ...prev, division: value, subCategory: '', product: { ...prev.product, id: '', styleNumber: '', name: '' } } : prev))
+                // Division変更時はSubCategoryリセット → 4項目揃わないので登録は発火しない
+                const next = { ...s, division: value, subCategory: '', product: { ...s.product, id: '', styleNumber: '', name: '' } }
+                setDraftRow(next)
               } else {
                 patchSample(s.id, { division: value, subCategory: '' })
               }
@@ -309,7 +324,9 @@ export default function GlobalSamplesPage() {
             onChange={(e) => {
               const value = e.target.value
               if (s.__draft) {
-                setDraftRow((prev) => (prev ? { ...prev, subCategory: value, product: { ...prev.product, id: '', styleNumber: '', name: '' } } : prev))
+                const next = { ...s, subCategory: value, product: { ...s.product, id: '', styleNumber: '', name: '' } }
+                setDraftRow(next)
+                tryRegisterDraft(next)
               } else {
                 patchSample(s.id, { subCategory: value })
               }
@@ -489,22 +506,22 @@ export default function GlobalSamplesPage() {
       ),
     },
     {
-      key: 'factoryName',
-      label: t('factoryName'),
+      key: 'mainFactoryCode',
+      label: t('mainFactoryCode'),
       render: (s) => (
         <input
           className="bp-input"
-          value={s.factoryName || ''}
+          value={s.mainFactoryCode || ''}
           onChange={(e) => {
             const value = e.target.value
             if (s.__draft) {
-              setDraftRow((prev) => (prev ? { ...prev, factoryName: value } : prev))
+              setDraftRow((prev) => (prev ? { ...prev, mainFactoryCode: value } : prev))
             } else {
-              setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, factoryName: value } : x)))
+              setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, mainFactoryCode: value } : x)))
             }
           }}
           onBlur={() => {
-            if (!s.__draft) patchSample(s.id, { factoryName: s.factoryName || '' })
+            if (!s.__draft) patchSample(s.id, { mainFactoryCode: s.mainFactoryCode || '' })
           }}
         />
       ),
@@ -517,7 +534,7 @@ export default function GlobalSamplesPage() {
           ? `$${parseFloat(s.costs[0].fobPrice).toFixed(1)}`
           : '-',
     },
-  ], [t, tConstants, creatingDraft, divisionOptions, subCategoryOptionsByDivision, products])
+  ], [t, tConstants, creatingDraft, divisionOptions, subCategoryOptionsByDivision, products, tryRegisterDraft])
 
   return (
     <>
@@ -525,34 +542,63 @@ export default function GlobalSamplesPage() {
         title={t('title')}
         titleMeta={<span className="bp-page__subtitle">({filtered.length})</span>}
         actions={
-          <button
-            className="bp-button bp-button--primary"
-            onClick={() => {
-              if (draftRow) return
-              setDraftRow({
-                id: 'draft-new',
-                __draft: true,
-                sampleName: '',
-                sampleNumber: '',
-                imageUrl: null,
-                year: null,
-                season: { term: '' },
-                sampleType: 'PROTO',
-                status: 'PENDING',  // DB value: PENDING = Registered
-                division: '',
-                subCategory: '',
-                factoryName: '',
-                dueDate: null,
-                color: null,
-                product: { id: '', styleNumber: '', name: '' },
-                costs: [],
-                updatedAt: new Date().toISOString(),
-              })
-            }}
-          >
-            <Plus style={{ width: 16, height: 16 }} />
-            {t('newSample')}
-          </button>
+          <>
+            <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+              <button
+                className="bp-button"
+                style={{
+                  padding: '6px 10px',
+                  background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'list' ? '#fff' : 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                }}
+                onClick={() => setViewMode('list')}
+                title="List View"
+              >
+                <List style={{ width: 18, height: 18 }} />
+              </button>
+              <button
+                className="bp-button"
+                style={{
+                  padding: '6px 10px',
+                  background: viewMode === 'grid' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'grid' ? '#fff' : 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                }}
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+              >
+                <LayoutGrid style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <button
+              className="bp-button bp-button--primary"
+              onClick={() => {
+                if (draftRow) return
+                setDraftRow({
+                  id: 'draft-new',
+                  __draft: true,
+                  sampleName: '',
+                  sampleNumber: '',
+                  imageUrl: null,
+                  year: null,
+                  season: { seasonName: '' },
+                  sampleType: 'PROTO',
+                  status: 'PENDING',  // DB value: PENDING = Registered
+                  division: '',
+                  subCategory: '',
+                  mainFactoryCode: '',
+                  dueDate: null,
+                  product: { id: '', styleNumber: '', name: '' },
+                  costs: [],
+                  updatedAt: new Date().toISOString(),
+                })
+              }}
+            >
+              <Plus style={{ width: 16, height: 16 }} />
+              {t('newSample')}
+            </button>
+          </>
         }
       />
 
@@ -592,24 +638,159 @@ export default function GlobalSamplesPage() {
           </select>
         </div>
 
-        <BpTable
-          columns={columns}
-          data={tableData}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onSort={toggleSort}
-          loading={loading}
-          emptyIcon={<FlaskConical style={{ width: 48, height: 48 }} />}
-          emptyMessage={t('noSamples')}
-        />
+        {viewMode === 'list' ? (
+          <>
+            <BpTable
+              columns={columns}
+              data={tableData}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={toggleSort}
+              loading={loading}
+              emptyIcon={<FlaskConical style={{ width: 48, height: 48 }} />}
+              emptyMessage={t('noSamples')}
+            />
 
-        <BpPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={sortedData.length}
-          pageSize={pageSize}
-          onPageChange={goToPage}
-        />
+            <BpPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={sortedData.length}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+            />
+          </>
+        ) : (
+          <>
+            {loading ? (
+              <div className="bp-spinner-wrap">
+                <div className="bp-spinner" />
+              </div>
+            ) : paginatedData.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', color: 'var(--color-text-secondary)' }}>
+                <FlaskConical style={{ width: 48, height: 48, marginBottom: 16 }} />
+                <div>{t('noSamples')}</div>
+              </div>
+            ) : (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+                gap: 16, 
+                padding: 20 
+              }}>
+                {paginatedData.map((sample) => {
+                  const cost = sample.costs?.[0]
+                  const price = cost ? `${cost.currency || '$'}${cost.fobPrice || '0'}` : '-'
+                  
+                  return (
+                    <Link
+                      key={sample.id}
+                      href={`/samples/${sample.id}`}
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div
+                        style={{
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          overflow: 'hidden',
+                          background: '#fff',
+                          transition: 'all 0.2s',
+                          cursor: 'pointer',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = 'none'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        {/* Image */}
+                        <div
+                          style={{
+                            width: '100%',
+                            height: 200,
+                            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {sample.imageUrl ? (
+                            <img
+                              src={sample.imageUrl}
+                              alt={sample.sampleName || 'Sample'}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          ) : (
+                            <FlaskConical style={{ width: 40, height: 40, opacity: 0.3, color: '#94a3b8' }} />
+                          )}
+                          {/* Status Badge */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              padding: '3px 8px',
+                              borderRadius: 10,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              background: sample.status === 'APPROVED' 
+                                ? '#10b981' 
+                                : sample.status === 'REJECTED' 
+                                ? '#ef4444' 
+                                : '#f59e0b',
+                              color: '#fff',
+                            }}
+                          >
+                            {sample.status === 'APPROVED' ? 'Approved' : sample.status === 'REJECTED' ? 'Dropped' : 'Registered'}
+                          </div>
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {sample.sampleName || 'Untitled'}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                            {sample.sampleNumber}
+                          </div>
+                          
+                          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, lineHeight: 1.5 }}>
+                            <div><strong>Style:</strong> {sample.product.styleNumber}</div>
+                            <div><strong>Type:</strong> {tConstants(`sampleTypes.${sample.sampleType}`)}</div>
+                            {sample.season?.seasonName && (
+                              <div><strong>Season:</strong> {sample.season.seasonName}</div>
+                            )}
+                            <div><strong>Colors:</strong> {sample.colorCount || 0}</div>
+                            <div><strong>Price:</strong> {price}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+
+            <BpPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={sortedData.length}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+            />
+          </>
+        )}
       </div>
     </>
   )

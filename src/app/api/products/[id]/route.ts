@@ -55,6 +55,51 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await req.json()
+    const data: any = {}
+
+    const stringFields = ['styleNumber', 'name', 'category', 'description', 'status']
+    for (const f of stringFields) {
+      if (typeof body[f] === 'string') {
+        data[f] = f === 'name' ? sanitizeProductName(body[f]) : body[f]
+      }
+    }
+    if (body.divisionId !== undefined) {
+      data.divisionId = body.divisionId ? Number(body.divisionId) : null
+    }
+    if (body.targetPrice !== undefined) {
+      data.targetPrice = body.targetPrice !== null && body.targetPrice !== '' ? parseFloat(body.targetPrice) : null
+    }
+    if (body.supplierId !== undefined) {
+      data.supplierId = body.supplierId || null
+    }
+    if (body.collectionId !== undefined) {
+      data.collectionId = body.collectionId || null
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+    }
+
+    const product = await prisma.product.update({
+      where: { id: params.id },
+      data,
+      include: {
+        collection: { include: { season: true } },
+        division: true,
+        supplier: true,
+        _count: { select: { samples: true } },
+      },
+    })
+    return NextResponse.json(product)
+  } catch (error) {
+    console.error(`PATCH /api/products/${params.id} failed:`, error)
+    return NextResponse.json({ error: 'Failed to patch product.' }, { status: 500 })
+  }
+}
+
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await prisma.product.delete({ where: { id: params.id } })

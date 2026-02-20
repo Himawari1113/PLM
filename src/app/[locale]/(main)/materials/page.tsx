@@ -185,156 +185,160 @@ export default function MaterialsPage() {
         </div>
 
         {/* Table */}
-        <div className="bp-table-wrap">
-          <table className="bp-table">
-            <thead>
-              <tr>
-                <th style={{ width: 120, paddingLeft: 12 }}>Material Code</th>
-                <th style={{ width: 190 }}>{t('name')}</th>
-                <th style={{ width: 120 }}>Category</th>
-                <th style={{ width: 95 }}>{t('type')}</th>
-                <th style={{ width: 150 }}>Supplier</th>
-                <th style={{ width: 160 }}>{t('composition')}</th>
-                <th style={{ width: 90 }}>{t('unitPrice')}</th>
-                <th style={{ width: 60 }}>Unit</th>
-                <th style={{ width: 80 }}>Weight</th>
-                <th style={{ width: 70 }}>Width</th>
-                <th style={{ width: 60 }}>Samples</th>
-                <th style={{ width: 40 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40 }}><div className="bp-spinner" /></td></tr>
-              ) : materials.length === 0 ? (
-                <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40, color: 'var(--color-gray-400)' }}>{t('noMaterialsFound')}</td></tr>
-              ) : materials.map((m) => {
-                const isReferenced = m.sampleRefCount > 0 || m._count.bomItems > 0
-                return (
-                  <tr key={m.id}>
-                    <td>
-                      <input
-                        className="bp-input"
-                        style={{ paddingLeft: 12 }}
-                        value={m.materialCode || ''}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, materialCode: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { materialCode: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        value={m.name}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, name: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { name: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <select
-                        className="bp-select"
-                        value={m.materialCategory || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, materialCategory: val } : x)))
-                          patchMaterial(m.id, { materialCategory: val })
-                        }}
-                      >
-                        <option value="">--</option>
-                        {MATERIAL_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        className="bp-select"
-                        value={m.type}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, type: val } : x)))
-                          patchMaterial(m.id, { type: val })
-                        }}
-                      >
-                        {MATERIAL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        className="bp-select"
-                        value={m.supplierMaterials?.[0]?.supplier?.id || ''}
-                        onChange={(e) => {
-                          const supplierId = e.target.value
-                          linkSupplierToMaterial(m.id, supplierId)
-                        }}
-                      >
-                        <option value="">--</option>
-                        {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        value={m.composition || ''}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, composition: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { composition: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        type="number"
-                        value={m.unitPrice != null ? m.unitPrice : ''}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, unitPrice: e.target.value === '' ? null : Number(e.target.value) } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { unitPrice: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        value={m.unit || ''}
-                        style={{ width: '100%' }}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, unit: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { unit: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        value={m.weight || ''}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, weight: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { weight: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="bp-input"
-                        value={m.width || ''}
-                        onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, width: e.target.value } : x)))}
-                        onBlur={(e) => patchMaterial(m.id, { width: e.target.value })}
-                      />
-                    </td>
-                    <td style={{ textAlign: 'center', fontSize: 'var(--font-size-sm)', padding: '0 6px' }}>
-                      {m.sampleRefCount > 0 ? (
-                        <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{m.sampleRefCount}</span>
-                      ) : (
-                        <span style={{ color: 'var(--color-gray-300)' }}>0</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '0 4px' }}>
-                      <button
-                        className="bp-button--icon-only"
-                        onClick={() => deleteMaterial(m.id)}
-                        disabled={isReferenced}
-                        title={isReferenced ? 'Referenced by samples' : 'Delete'}
-                        style={{ opacity: isReferenced ? 0.3 : 1, cursor: isReferenced ? 'not-allowed' : 'pointer' }}
-                      >
-                        <Trash2 style={{ width: 15, height: 15 }} />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="bp-spinner-wrap">
+            <div className="bp-spinner" />
+          </div>
+        ) : (
+          <div className="bp-table-wrap">
+            <table className="bp-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 120, paddingLeft: 12 }}>Material Code</th>
+                  <th style={{ width: 190 }}>{t('name')}</th>
+                  <th style={{ width: 120 }}>Category</th>
+                  <th style={{ width: 95 }}>{t('type')}</th>
+                  <th style={{ width: 150 }}>Supplier</th>
+                  <th style={{ width: 160 }}>{t('composition')}</th>
+                  <th style={{ width: 90 }}>{t('unitPrice')}</th>
+                  <th style={{ width: 60 }}>Unit</th>
+                  <th style={{ width: 80 }}>Weight</th>
+                  <th style={{ width: 70 }}>Width</th>
+                  <th style={{ width: 60 }}>Samples</th>
+                  <th style={{ width: 40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {materials.length === 0 ? (
+                  <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40, color: 'var(--color-gray-400)' }}>{t('noMaterialsFound')}</td></tr>
+                ) : materials.map((m) => {
+                  const isReferenced = m.sampleRefCount > 0 || m._count.bomItems > 0
+                  return (
+                    <tr key={m.id}>
+                      <td>
+                        <input
+                          className="bp-input"
+                          style={{ paddingLeft: 12 }}
+                          value={m.materialCode || ''}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, materialCode: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { materialCode: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          value={m.name}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, name: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { name: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          className="bp-select"
+                          value={m.materialCategory || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, materialCategory: val } : x)))
+                            patchMaterial(m.id, { materialCategory: val })
+                          }}
+                        >
+                          <option value="">--</option>
+                          {MATERIAL_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="bp-select"
+                          value={m.type}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, type: val } : x)))
+                            patchMaterial(m.id, { type: val })
+                          }}
+                        >
+                          {MATERIAL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="bp-select"
+                          value={m.supplierMaterials?.[0]?.supplier?.id || ''}
+                          onChange={(e) => {
+                            const supplierId = e.target.value
+                            linkSupplierToMaterial(m.id, supplierId)
+                          }}
+                        >
+                          <option value="">--</option>
+                          {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          value={m.composition || ''}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, composition: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { composition: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          type="number"
+                          value={m.unitPrice != null ? m.unitPrice : ''}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, unitPrice: e.target.value === '' ? null : Number(e.target.value) } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { unitPrice: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          value={m.unit || ''}
+                          style={{ width: '100%' }}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, unit: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { unit: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          value={m.weight || ''}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, weight: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { weight: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="bp-input"
+                          value={m.width || ''}
+                          onChange={(e) => setMaterials((prev) => prev.map((x) => (x.id === m.id ? { ...x, width: e.target.value } : x)))}
+                          onBlur={(e) => patchMaterial(m.id, { width: e.target.value })}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'center', fontSize: 'var(--font-size-sm)', padding: '0 6px' }}>
+                        {m.sampleRefCount > 0 ? (
+                          <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{m.sampleRefCount}</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-gray-300)' }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '0 4px' }}>
+                        <button
+                          className="bp-button--icon-only"
+                          onClick={() => deleteMaterial(m.id)}
+                          disabled={isReferenced}
+                          title={isReferenced ? 'Referenced by samples' : 'Delete'}
+                          style={{ opacity: isReferenced ? 0.3 : 1, cursor: isReferenced ? 'not-allowed' : 'pointer' }}
+                        >
+                          <Trash2 style={{ width: 15, height: 15 }} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   )

@@ -26,7 +26,7 @@ export default function ProgressManagementPage() {
   const t = useTranslations('progress')
   const tSamples = useTranslations('samples')
 
-  const { selectedYear } = useYearFilter()
+  const { selectedYear, selectedSeason } = useYearFilter()
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [rows, setRows] = useState<SampleRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,6 +35,7 @@ export default function ProgressManagementPage() {
     setLoading(true)
     const params = new URLSearchParams()
     if (selectedYear !== null) params.set('year', String(selectedYear))
+    if (selectedSeason !== null) params.set('season', String(selectedSeason))
     const res = await fetch(`/api/progress/samples?${params.toString()}`)
     const data = await res.json()
     setMilestones(Array.isArray(data.milestones) ? data.milestones : [])
@@ -44,7 +45,7 @@ export default function ProgressManagementPage() {
 
   useEffect(() => {
     fetchData()
-  }, [selectedYear])
+  }, [selectedYear, selectedSeason])
 
   const toggle = async (sampleId: string, milestoneId: string, checked: boolean) => {
     await fetch('/api/progress', {
