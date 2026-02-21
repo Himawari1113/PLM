@@ -3,14 +3,14 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Mail, Lock, AlertCircle } from 'lucide-react'
+import { Sparkles, User, Lock, AlertCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 export default function LoginPage() {
   const router = useRouter()
   const t = useTranslations('login')
 
-  const [email, setEmail] = useState('')
+  const [userid, setUserid] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -21,7 +21,7 @@ export default function LoginPage() {
     setLoading(true)
 
     const result = await signIn('credentials', {
-      email,
+      userid,
       password,
       redirect: false,
     })
@@ -60,16 +60,16 @@ export default function LoginPage() {
             )}
 
             <div className="bp-form-group" style={{ marginBottom: 16 }}>
-              <label className="bp-label" htmlFor="email">{t('email')}</label>
+              <label className="bp-label" htmlFor="userid">{t('userid')}</label>
               <div style={{ position: 'relative' }}>
-                <Mail style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: 'var(--color-gray-400)' }} />
+                <User style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: 'var(--color-gray-400)' }} />
                 <input
-                  id="email"
+                  id="userid"
                   className="bp-input"
-                  type="email"
-                  placeholder={t('emailPlaceholder')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  placeholder={t('useridPlaceholder')}
+                  value={userid}
+                  onChange={(e) => setUserid(e.target.value)}
                   required
                   style={{ paddingLeft: 40, height: 48 }}
                 />
@@ -120,8 +120,8 @@ export default function LoginPage() {
 
             <div style={{ borderRadius: 'var(--radius-md)', background: 'var(--color-gray-50)', border: '1px solid var(--color-gray-200)', padding: 16, display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                <p style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>Email</p>
-                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-500)', fontFamily: 'monospace' }}>admin@example.com</p>
+                <p style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>User ID</p>
+                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-500)', fontFamily: 'monospace' }}>admin</p>
               </div>
               <div>
                 <p style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>Password</p>

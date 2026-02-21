@@ -6,31 +6,28 @@ interface Params {
   params: { id: string }
 }
 
+const SELECT_FIELDS = Prisma.sql`
+  id,
+  "colorCode",
+  "colorName",
+  "pantoneCode",
+  "pantoneName",
+  "rgbValue",
+  "colorImage",
+  "colorType",
+  "cmykC",
+  "cmykM",
+  "cmykY",
+  "cmykK",
+  "colorTemperature",
+  "createdAt",
+  "updatedAt"
+`
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
-    const rows = await prisma.$queryRaw<Array<{
-      id: string
-      colorCode: string
-      colorName: string
-      pantoneCode: string | null
-      pantoneName: string | null
-      rgbValue: string | null
-      colorImage: string | null
-      colorType: 'SOLID' | 'PATTERN'
-      createdAt: Date
-      updatedAt: Date
-    }>>(Prisma.sql`
-      SELECT
-        id,
-        "colorCode",
-        "colorName",
-        "pantoneCode",
-        "pantoneName",
-        "rgbValue",
-        "colorImage",
-        "colorType",
-        "createdAt",
-        "updatedAt"
+    const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+      SELECT ${SELECT_FIELDS}
       FROM "Color"
       WHERE id = ${params.id}
       LIMIT 1
@@ -59,19 +56,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'colorName is required' }, { status: 400 })
     }
     const colorType = body.colorType === 'PATTERN' ? 'PATTERN' : 'SOLID'
+    const cmykC = body.cmykC != null ? parseInt(body.cmykC) : null
+    const cmykM = body.cmykM != null ? parseInt(body.cmykM) : null
+    const cmykY = body.cmykY != null ? parseInt(body.cmykY) : null
+    const cmykK = body.cmykK != null ? parseInt(body.cmykK) : null
+    const colorTemperature = body.colorTemperature || null
 
-    const rows = await prisma.$queryRaw<Array<{
-      id: string
-      colorCode: string
-      colorName: string
-      pantoneCode: string | null
-      pantoneName: string | null
-      rgbValue: string | null
-      colorImage: string | null
-      colorType: 'SOLID' | 'PATTERN'
-      createdAt: Date
-      updatedAt: Date
-    }>>(Prisma.sql`
+    const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
       UPDATE "Color"
       SET
         "colorCode" = ${colorCode},
@@ -81,19 +72,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
         "rgbValue" = ${body.rgbValue ? String(body.rgbValue).trim() : null},
         "colorImage" = ${body.colorImage ? String(body.colorImage).trim() : null},
         "colorType" = ${colorType}::"ColorType",
+        "cmykC" = ${cmykC},
+        "cmykM" = ${cmykM},
+        "cmykY" = ${cmykY},
+        "cmykK" = ${cmykK},
+        "colorTemperature" = ${colorTemperature},
         "updatedAt" = NOW()
       WHERE id = ${params.id}
-      RETURNING
-        id,
-        "colorCode",
-        "colorName",
-        "pantoneCode",
-        "pantoneName",
-        "rgbValue",
-        "colorImage",
-        "colorType",
-        "createdAt",
-        "updatedAt"
+      RETURNING ${SELECT_FIELDS}
     `)
 
     if (!rows[0]) {

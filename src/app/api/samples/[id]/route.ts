@@ -72,6 +72,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.dueDate === null || typeof body.dueDate === 'string') {
       data.dueDate = body.dueDate ? new Date(body.dueDate) : null
     }
+    if (body.salesStart === null || typeof body.salesStart === 'string') {
+      data.salesStart = body.salesStart ? new Date(body.salesStart) : null
+    }
+    if (body.poDeadline === null || typeof body.poDeadline === 'string') {
+      data.poDeadline = body.poDeadline ? new Date(body.poDeadline) : null
+    }
 
     if (typeof body.year === 'number' || typeof body.year === 'string') {
       const parsedYear = Number(body.year)

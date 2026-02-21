@@ -22,6 +22,9 @@ interface ProductDetail {
   description: string | null
   status: string
   targetPrice: number | null
+  salesStart: string | null
+  originalPrice: number | null
+  planQty: number | null
   collectionId: string | null
   supplierId: string | null
   collection: { id: string; name: string; season: { id: string; name: string } } | null
@@ -62,7 +65,11 @@ export default function ProductDetailPage() {
       setForm({
         styleNumber: data.styleNumber, name: data.name, category: data.category,
         description: data.description || '', status: data.status,
-        targetPrice: data.targetPrice || '', collectionId: data.collectionId || '',
+        targetPrice: data.targetPrice || '',
+        salesStart: data.salesStart ? data.salesStart.split('T')[0] : '',
+        originalPrice: data.originalPrice || '',
+        planQty: data.planQty || '',
+        collectionId: data.collectionId || '',
         supplierId: data.supplierId || '', divisionId: data.divisionId ? String(data.divisionId) : '',
       })
       setSelectedSeasonId(data.collection?.season?.id || '')
@@ -168,6 +175,18 @@ export default function ProductDetailPage() {
                 <input className="bp-input" type="number" value={form.targetPrice} onChange={(e) => setForm({ ...form, targetPrice: e.target.value })} />
               </div>
               <div className="bp-form-group">
+                <label className="bp-label">Sales Start</label>
+                <input className="bp-input" type="date" value={form.salesStart} onChange={(e) => setForm({ ...form, salesStart: e.target.value })} />
+              </div>
+              <div className="bp-form-group">
+                <label className="bp-label">Original Price</label>
+                <input className="bp-input" type="number" value={form.originalPrice} onChange={(e) => setForm({ ...form, originalPrice: e.target.value })} />
+              </div>
+              <div className="bp-form-group">
+                <label className="bp-label">Plan Qty</label>
+                <input className="bp-input" type="number" value={form.planQty} onChange={(e) => setForm({ ...form, planQty: e.target.value })} />
+              </div>
+              <div className="bp-form-group">
                 <label className="bp-label">{t('division')}</label>
                 <select className="bp-select" value={form.divisionId} onChange={(e) => setForm({ ...form, divisionId: e.target.value })}>
                   <option value="">--</option>
@@ -205,6 +224,9 @@ export default function ProductDetailPage() {
               <BpField label={t('category')}>{tConstants(`categories.${product.category}`)}</BpField>
               <BpField label={t('division')}>{product.division?.name || '-'}</BpField>
               <BpField label={t('targetPrice')}>{product.targetPrice != null ? usd.format(product.targetPrice) : '-'}</BpField>
+              <BpField label="Sales Start">{product.salesStart ? product.salesStart.split('T')[0] : '-'}</BpField>
+              <BpField label="Original Price">{product.originalPrice != null ? usd.format(product.originalPrice) : '-'}</BpField>
+              <BpField label="Plan Qty">{product.planQty != null ? product.planQty : '-'}</BpField>
               <BpField label={t('season')}>{product.collection?.season?.name || '-'}</BpField>
               <BpField label="Collection">{product.collection?.name || '-'}</BpField>
               <BpField label={t('supplier')}>{product.supplier?.name || '-'}</BpField>

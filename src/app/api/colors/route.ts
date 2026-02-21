@@ -2,33 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
+const SELECT_FIELDS = Prisma.sql`
+  id,
+  "colorCode",
+  "colorName",
+  "pantoneCode",
+  "pantoneName",
+  "rgbValue",
+  "colorImage",
+  "colorType",
+  "cmykC",
+  "cmykM",
+  "cmykY",
+  "cmykK",
+  "colorTemperature",
+  "createdAt",
+  "updatedAt"
+`
+
 export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get('search')?.trim()
     const colors = search
-      ? await prisma.$queryRaw<Array<{
-          id: string
-          colorCode: string
-          colorName: string
-          pantoneCode: string | null
-          pantoneName: string | null
-          rgbValue: string | null
-          colorImage: string | null
-          colorType: 'SOLID' | 'PATTERN'
-          createdAt: Date
-          updatedAt: Date
-        }>>(Prisma.sql`
-          SELECT
-            id,
-            "colorCode",
-            "colorName",
-            "pantoneCode",
-            "pantoneName",
-            "rgbValue",
-            "colorImage",
-            "colorType",
-            "createdAt",
-            "updatedAt"
+      ? await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+          SELECT ${SELECT_FIELDS}
           FROM "Color"
           WHERE
             "colorCode" ILIKE ${'%' + search + '%'}
@@ -36,29 +33,8 @@ export async function GET(req: NextRequest) {
             OR COALESCE("pantoneCode", '') ILIKE ${'%' + search + '%'}
           ORDER BY "createdAt" DESC
         `)
-      : await prisma.$queryRaw<Array<{
-          id: string
-          colorCode: string
-          colorName: string
-          pantoneCode: string | null
-          pantoneName: string | null
-          rgbValue: string | null
-          colorImage: string | null
-          colorType: 'SOLID' | 'PATTERN'
-          createdAt: Date
-          updatedAt: Date
-        }>>(Prisma.sql`
-          SELECT
-            id,
-            "colorCode",
-            "colorName",
-            "pantoneCode",
-            "pantoneName",
-            "rgbValue",
-            "colorImage",
-            "colorType",
-            "createdAt",
-            "updatedAt"
+      : await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+          SELECT ${SELECT_FIELDS}
           FROM "Color"
           ORDER BY "createdAt" DESC
         `)
@@ -86,19 +62,19 @@ export async function POST(req: NextRequest) {
     const colorType = body.colorType === 'PATTERN' ? 'PATTERN' : 'SOLID'
     const id = crypto.randomUUID()
 
-    const created = await prisma.$queryRaw<Array<{
-      id: string
-      colorCode: string
-      colorName: string
-      pantoneCode: string | null
-      pantoneName: string | null
-      rgbValue: string | null
-      colorImage: string | null
-      colorType: 'SOLID' | 'PATTERN'
-      createdAt: Date
-      updatedAt: Date
-    }>>(Prisma.sql`
-      INSERT INTO "Color" ("id", "colorCode", "colorName", "pantoneCode", "pantoneName", "rgbValue", "colorImage", "colorType", "createdAt", "updatedAt")
+    const cmykC = body.cmykC != null ? parseInt(body.cmykC) : null
+    const cmykM = body.cmykM != null ? parseInt(body.cmykM) : null
+    const cmykY = body.cmykY != null ? parseInt(body.cmykY) : null
+    const cmykK = body.cmykK != null ? parseInt(body.cmykK) : null
+    const colorTemperature = body.colorTemperature || null
+
+    const created = await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+      INSERT INTO "Color" (
+        "id", "colorCode", "colorName", "pantoneCode", "pantoneName",
+        "rgbValue", "colorImage", "colorType",
+        "cmykC", "cmykM", "cmykY", "cmykK", "colorTemperature",
+        "createdAt", "updatedAt"
+      )
       VALUES (
         ${id},
         ${colorCode},
@@ -108,20 +84,11 @@ export async function POST(req: NextRequest) {
         ${body.rgbValue ? String(body.rgbValue).trim() : null},
         ${body.colorImage ? String(body.colorImage).trim() : null},
         ${colorType}::"ColorType",
-        NOW(),
-        NOW()
+        ${cmykC}, ${cmykM}, ${cmykY}, ${cmykK},
+        ${colorTemperature},
+        NOW(), NOW()
       )
-      RETURNING
-        id,
-        "colorCode",
-        "colorName",
-        "pantoneCode",
-        "pantoneName",
-        "rgbValue",
-        "colorImage",
-        "colorType",
-        "createdAt",
-        "updatedAt"
+      RETURNING ${SELECT_FIELDS}
     `)
 
     return NextResponse.json(created[0], { status: 201 })

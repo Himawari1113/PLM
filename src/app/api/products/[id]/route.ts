@@ -44,6 +44,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         description: body.description || null,
         status: body.status,
         targetPrice: body.targetPrice ? parseFloat(body.targetPrice) : null,
+        salesStart: body.salesStart ? new Date(body.salesStart) : null,
+        originalPrice: body.originalPrice ? parseFloat(body.originalPrice) : null,
+        planQty: body.planQty ? parseInt(body.planQty) : null,
         collectionId: body.collectionId || null,
         supplierId: body.supplierId || null,
       },
@@ -77,6 +80,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     if (body.collectionId !== undefined) {
       data.collectionId = body.collectionId || null
+    }
+    if (body.salesStart !== undefined) {
+      data.salesStart = body.salesStart ? new Date(body.salesStart) : null
+    }
+    if (body.originalPrice !== undefined) {
+      data.originalPrice = body.originalPrice !== null && body.originalPrice !== '' ? parseFloat(body.originalPrice) : null
+    }
+    if (body.planQty !== undefined) {
+      data.planQty = body.planQty !== null && body.planQty !== '' ? parseInt(body.planQty) : null
     }
 
     if (Object.keys(data).length === 0) {

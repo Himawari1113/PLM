@@ -14,6 +14,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.unit !== undefined) data.unit = body.unit || null
     if (body.weight !== undefined) data.weight = body.weight || null
     if (body.width !== undefined) data.width = body.width || null
+    if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl || null
+    if (body.originCountry !== undefined) data.originCountry = body.originCountry || null
+    if (body.docs !== undefined) data.docs = body.docs || null
 
     const material = await prisma.material.update({
       where: { id: params.id },

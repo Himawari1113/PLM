@@ -39,6 +39,8 @@
     "trends": "Trends",
     "samples": "Samples",
     "financialPlan": "Financial Plan",
+    "cost": "Cost",
+    "quality": "Quality",
     "brandSub": "Product Lifecycle"
   },
   "colors": {
@@ -104,7 +106,7 @@
     "subCategoryFilter": "Filter by sub category"
   },
   "materials": {
-    "title": "Material Management",
+    "title": "Material Master",
     "newMaterial": "New Material",
     "editMaterial": "Edit Material",
     "name": "Material Name",
@@ -314,16 +316,16 @@
     "rgbValue": "RGB"
   },
   "login": {
-    "title": "Apparel PLM",
+    "title": "Product Cockpit",
     "subtitle": "Please login to your account",
-    "email": "Email Address",
+    "userid": "User ID",
     "password": "Password",
     "loginButton": "Login",
     "loggingIn": "Logging in...",
-    "error": "Invalid email or password",
+    "error": "Invalid user ID or password",
     "errorSubtext": "Please check your credentials",
     "demoAccount": "Demo Account",
-    "emailPlaceholder": "admin@example.com",
+    "useridPlaceholder": "admin",
     "passwordPlaceholder": "Enter password"
   },
   "header": {

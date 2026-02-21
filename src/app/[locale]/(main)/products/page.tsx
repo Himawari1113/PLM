@@ -20,6 +20,9 @@ interface Product {
   description: string | null
   status: string
   targetPrice: number | null
+  salesStart: string | null
+  originalPrice: number | null
+  planQty: number | null
   collectionId: string | null
   collection: { name: string; season: { name: string; seasonName?: string } } | null
   supplierId: string | null
@@ -94,6 +97,9 @@ export default function ProductsPage() {
     { k: 'season', l: 'Season', w: 80, editable: false },
     { k: 'supplier', l: 'Supplier', w: 160, editable: true, type: 'select' },
     { k: 'targetPrice', l: 'Target Price', w: 120, editable: true, type: 'number', align: 'right' },
+    { k: 'salesStart', l: 'Sales Start', w: 120, editable: true, type: 'text' },
+    { k: 'originalPrice', l: 'Original Price', w: 120, editable: true, type: 'number', align: 'right' },
+    { k: 'planQty', l: 'Plan Qty', w: 100, editable: true, type: 'number', align: 'right' },
     { k: 'description', l: 'Description', w: 200, editable: true },
     { k: 'samples', l: 'Samples', w: 80, editable: false, align: 'center', calculated: true },
   ], [])
@@ -136,8 +142,8 @@ export default function ProductsPage() {
   useEffect(() => { fetchProducts() }, [fetchProducts])
 
   useEffect(() => {
-    fetch('/api/divisions').then(r => r.json()).then(d => setDivisions(Array.isArray(d) ? d : [])).catch(() => {})
-    fetch('/api/suppliers').then(r => r.json()).then(d => setSuppliers(Array.isArray(d) ? d : [])).catch(() => {})
+    fetch('/api/divisions').then(r => r.json()).then(d => setDivisions(Array.isArray(d) ? d : [])).catch(() => { })
+    fetch('/api/suppliers').then(r => r.json()).then(d => setSuppliers(Array.isArray(d) ? d : [])).catch(() => { })
   }, [])
 
   /* ── Filtering ── */
@@ -193,8 +199,10 @@ export default function ProductsPage() {
     } else if (field === 'supplier') {
       const sup = suppliers.find(s => s.name === value)
       patchBody = { supplierId: sup ? sup.id : null }
-    } else if (isNum) {
-      patchBody = { [field]: value ? parseFloat(value) : null }
+    } else if (isNum || ['originalPrice', 'planQty'].includes(field)) {
+      patchBody = { [field]: value ? (field === 'planQty' ? parseInt(value) : parseFloat(value)) : null }
+    } else if (field === 'salesStart') {
+      patchBody = { salesStart: value || null }
     } else {
       patchBody = { [field]: value }
     }
@@ -257,6 +265,9 @@ export default function ProductsPage() {
       case 'season': return item.collection?.season?.seasonName || item.collection?.season?.name || '-'
       case 'supplier': return item.supplier?.name || '-'
       case 'targetPrice': return item.targetPrice != null ? usd.format(item.targetPrice) : '-'
+      case 'originalPrice': return item.originalPrice != null ? usd.format(item.originalPrice) : '-'
+      case 'planQty': return item.planQty != null ? String(item.planQty) : '-'
+      case 'salesStart': return item.salesStart ? item.salesStart.split('T')[0] : '-'
       case 'samples': return String(item._count?.samples ?? 0)
       case 'status': {
         try { return tConstants(`productStatus.${item.status}`) } catch { return item.status }
@@ -273,6 +284,9 @@ export default function ProductsPage() {
       case 'division': return item.division?.name || ''
       case 'supplier': return item.supplier?.name || ''
       case 'targetPrice': return item.targetPrice != null ? String(item.targetPrice) : ''
+      case 'originalPrice': return item.originalPrice != null ? String(item.originalPrice) : ''
+      case 'planQty': return item.planQty != null ? String(item.planQty) : ''
+      case 'salesStart': return item.salesStart ? item.salesStart.split('T')[0] : ''
       default: return String((item as any)[key] || '')
     }
   }
@@ -482,183 +496,183 @@ export default function ProductsPage() {
 
         {/* Table */}
         <div style={{ flex: 1, overflow: 'auto' }}>
-        <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, fontFamily: 'var(--font-family-en)' }}>
-          <thead>
-            <tr>
-              <th style={{ ...getFrozenStyle('#', true), minWidth: 50, padding: '8px 6px', textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0' }}>#</th>
-              {columns.map(c => (
-                <th key={c.k} style={{ ...getFrozenStyle(c.k, true), minWidth: c.w, padding: '8px 10px', textAlign: c.align || 'left', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>
-                  {c.l}
+          <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, fontFamily: 'var(--font-family-en)' }}>
+            <thead>
+              <tr>
+                <th style={{ ...getFrozenStyle('#', true), minWidth: 50, padding: '8px 6px', textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0' }}>#</th>
+                {columns.map(c => (
+                  <th key={c.k} style={{ ...getFrozenStyle(c.k, true), minWidth: c.w, padding: '8px 10px', textAlign: c.align || 'left', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                    {c.l}
+                  </th>
+                ))}
+                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f8fafc', minWidth: 50, padding: '8px 6px', textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0' }}>
+                  Del
                 </th>
-              ))}
-              <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f8fafc', minWidth: 50, padding: '8px 6px', textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0' }}>
-                Del
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((item, idx) => (
-              <tr key={item.id} style={{ height: 38 }}>
-                {/* Row number */}
-                <td style={{ ...getFrozenStyle('#'), textAlign: 'center', fontSize: 11, color: '#94a3b8', padding: '0 6px', borderBottom: '1px solid #f1f5f9' }}>
-                  {(currentPage - 1) * pageSize + idx + 1}
-                </td>
-
-                {columns.map(col => {
-                  const isEdit = isEditing(item.id, col.k)
-                  const isSelected = selectedCell?.id === item.id && selectedCell?.field === col.k
-                  const isCopied = copiedCell?.id === item.id && copiedCell?.field === col.k
-                  const frozen = getFrozenStyle(col.k)
-
-                  return (
-                    <td
-                      key={col.k}
-                      data-cell-id={`${item.id}-${col.k}`}
-                      style={{
-                        ...frozen,
-                        padding: '0 8px',
-                        borderBottom: '1px solid #f1f5f9',
-                        textAlign: col.align || 'left',
-                        cursor: col.editable ? 'cell' : 'default',
-                        background: isSelected ? '#e0f2fe' : isCopied ? '#fef3c7' : (col.editable ? (Object.keys(frozen).length ? '#fff' : undefined) : '#f8fafc'),
-                        outline: isSelected ? '2px solid #0ea5e9' : 'none',
-                        outlineOffset: -2,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: col.w,
-                      }}
-                      onClick={() => {
-                        if (col.editable) setSelectedCell({ id: item.id, field: col.k })
-                      }}
-                      onDoubleClick={() => {
-                        if (col.editable) startEdit(item.id, col.k, getRawValue(item, col.k))
-                      }}
-                    >
-                      {isEdit ? (
-                        col.type === 'select' ? renderSelectEditor(col) : (
-                          <input
-                            type={col.type === 'number' ? 'number' : 'text'}
-                            step={col.k === 'targetPrice' ? '0.01' : '1'}
-                            value={editState!.value}
-                            onChange={e => setEditState(prev => prev ? { ...prev, value: e.target.value } : null)}
-                            onBlur={handleSave}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleSave()
-                              if (e.key === 'Escape') cancelEdit()
-                            }}
-                            autoFocus
-                            style={{ width: '100%', fontSize: 13, padding: '4px 6px', border: '2px solid var(--color-primary)', borderRadius: 4, outline: 'none' }}
-                          />
-                        )
-                      ) : col.k === 'styleNumber' ? (
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); handleStyleClick(item) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0ea5e9', fontWeight: 600, fontSize: 13, padding: 0 }}
-                        >
-                          {item.styleNumber}
-                        </button>
-                      ) : col.k === 'status' ? (
-                        statusBadge(item.status)
-                      ) : col.k === 'name' ? (
-                        <span style={{ fontWeight: 500 }}>{item.name || '-'}</span>
-                      ) : (
-                        <span>{getCellValue(item, col.k)}</span>
-                      )}
-                    </td>
-                  )
-                })}
-
-                {/* Delete button */}
-                <td style={{ textAlign: 'center', padding: '0 4px', borderBottom: '1px solid #f1f5f9' }}>
-                  {(item._count?.samples || 0) === 0 ? (
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: '2px 4px' }}
-                      title="Delete"
-                    >
-                      ×
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: 10, color: '#94a3b8' }} title={`${item._count.samples} samples`}>🔒</span>
-                  )}
-                </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {paginatedData.map((item, idx) => (
+                <tr key={item.id} style={{ height: 38 }}>
+                  {/* Row number */}
+                  <td style={{ ...getFrozenStyle('#'), textAlign: 'center', fontSize: 11, color: '#94a3b8', padding: '0 6px', borderBottom: '1px solid #f1f5f9' }}>
+                    {(currentPage - 1) * pageSize + idx + 1}
+                  </td>
 
-      {/* Pagination */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '8px 20px',
-        borderTop: '1px solid var(--color-border)',
-        background: 'var(--color-surface)',
-        fontSize: 12,
-        color: '#64748b',
-      }}>
-        <span>{filtered.length} products</span>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: currentPage > 1 ? 'pointer' : 'default', opacity: currentPage > 1 ? 1 : 0.4, fontSize: 12 }}
-          >
-            ← Prev
-          </button>
-          <span>Page {currentPage} / {totalPages}</span>
-          <button
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: currentPage < totalPages ? 'pointer' : 'default', opacity: currentPage < totalPages ? 1 : 0.4, fontSize: 12 }}
-          >
-            Next →
-          </button>
+                  {columns.map(col => {
+                    const isEdit = isEditing(item.id, col.k)
+                    const isSelected = selectedCell?.id === item.id && selectedCell?.field === col.k
+                    const isCopied = copiedCell?.id === item.id && copiedCell?.field === col.k
+                    const frozen = getFrozenStyle(col.k)
+
+                    return (
+                      <td
+                        key={col.k}
+                        data-cell-id={`${item.id}-${col.k}`}
+                        style={{
+                          ...frozen,
+                          padding: '0 8px',
+                          borderBottom: '1px solid #f1f5f9',
+                          textAlign: col.align || 'left',
+                          cursor: col.editable ? 'cell' : 'default',
+                          background: isSelected ? '#e0f2fe' : isCopied ? '#fef3c7' : (col.editable ? (Object.keys(frozen).length ? '#fff' : undefined) : '#f8fafc'),
+                          outline: isSelected ? '2px solid #0ea5e9' : 'none',
+                          outlineOffset: -2,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: col.w,
+                        }}
+                        onClick={() => {
+                          if (col.editable) setSelectedCell({ id: item.id, field: col.k })
+                        }}
+                        onDoubleClick={() => {
+                          if (col.editable) startEdit(item.id, col.k, getRawValue(item, col.k))
+                        }}
+                      >
+                        {isEdit ? (
+                          col.type === 'select' ? renderSelectEditor(col) : (
+                            <input
+                              type={col.type === 'number' ? 'number' : 'text'}
+                              step={col.k === 'targetPrice' ? '0.01' : '1'}
+                              value={editState!.value}
+                              onChange={e => setEditState(prev => prev ? { ...prev, value: e.target.value } : null)}
+                              onBlur={handleSave}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSave()
+                                if (e.key === 'Escape') cancelEdit()
+                              }}
+                              autoFocus
+                              style={{ width: '100%', fontSize: 13, padding: '4px 6px', border: '2px solid var(--color-primary)', borderRadius: 4, outline: 'none' }}
+                            />
+                          )
+                        ) : col.k === 'styleNumber' ? (
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); handleStyleClick(item) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0ea5e9', fontWeight: 600, fontSize: 13, padding: 0 }}
+                          >
+                            {item.styleNumber}
+                          </button>
+                        ) : col.k === 'status' ? (
+                          statusBadge(item.status)
+                        ) : col.k === 'name' ? (
+                          <span style={{ fontWeight: 500 }}>{item.name || '-'}</span>
+                        ) : (
+                          <span>{getCellValue(item, col.k)}</span>
+                        )}
+                      </td>
+                    )
+                  })}
+
+                  {/* Delete button */}
+                  <td style={{ textAlign: 'center', padding: '0 4px', borderBottom: '1px solid #f1f5f9' }}>
+                    {(item._count?.samples || 0) === 0 ? (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: '2px 4px' }}
+                        title="Delete"
+                      >
+                        ×
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 10, color: '#94a3b8' }} title={`${item._count.samples} samples`}>🔒</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      {/* Detail Panel */}
-      {selectedProduct && (
+        {/* Pagination */}
         <div style={{
-          position: 'fixed',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 380,
-          background: '#fff',
-          borderLeft: '1px solid #e2e8f0',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
-          zIndex: 1000,
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'auto',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 20px',
+          borderTop: '1px solid var(--color-border)',
+          background: 'var(--color-surface)',
+          fontSize: 12,
+          color: '#64748b',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Product Details</h3>
-            <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#94a3b8', lineHeight: 1 }}>×</button>
-          </div>
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <DetailField label="Style No" value={selectedProduct.styleNumber} highlight />
-            <DetailField label="Product Name" value={selectedProduct.name} />
-            <DetailField label="Division" value={selectedProduct.division?.name || '-'} />
-            <DetailField label="Category" value={selectedProduct.category} />
-            <DetailField label="Status" value={selectedProduct.status} />
-            <DetailField label="Season" value={selectedProduct.collection?.season?.seasonName || selectedProduct.collection?.season?.name || '-'} />
-            <DetailField label="Supplier" value={selectedProduct.supplier?.name || '-'} />
-            <DetailField label="Target Price" value={selectedProduct.targetPrice != null ? usd.format(selectedProduct.targetPrice) : '-'} highlight />
-            <DetailField label="Description" value={selectedProduct.description || '-'} />
-            <DetailField label="Samples" value={String(selectedProduct._count?.samples ?? 0)} />
-            <Link href={`/products/${selectedProduct.id}`}>
-              <button className="bp-button bp-button--primary" style={{ width: '100%', marginTop: 8 }}>View Full Details →</button>
-            </Link>
+          <span>{filtered.length} products</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: currentPage > 1 ? 'pointer' : 'default', opacity: currentPage > 1 ? 1 : 0.4, fontSize: 12 }}
+            >
+              ← Prev
+            </button>
+            <span>Page {currentPage} / {totalPages}</span>
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: currentPage < totalPages ? 'pointer' : 'default', opacity: currentPage < totalPages ? 1 : 0.4, fontSize: 12 }}
+            >
+              Next →
+            </button>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Detail Panel */}
+        {selectedProduct && (
+          <div style={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 380,
+            background: '#fff',
+            borderLeft: '1px solid #e2e8f0',
+            boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Product Details</h3>
+              <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#94a3b8', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <DetailField label="Style No" value={selectedProduct.styleNumber} highlight />
+              <DetailField label="Product Name" value={selectedProduct.name} />
+              <DetailField label="Division" value={selectedProduct.division?.name || '-'} />
+              <DetailField label="Category" value={selectedProduct.category} />
+              <DetailField label="Status" value={selectedProduct.status} />
+              <DetailField label="Season" value={selectedProduct.collection?.season?.seasonName || selectedProduct.collection?.season?.name || '-'} />
+              <DetailField label="Supplier" value={selectedProduct.supplier?.name || '-'} />
+              <DetailField label="Target Price" value={selectedProduct.targetPrice != null ? usd.format(selectedProduct.targetPrice) : '-'} highlight />
+              <DetailField label="Description" value={selectedProduct.description || '-'} />
+              <DetailField label="Samples" value={String(selectedProduct._count?.samples ?? 0)} />
+              <Link href={`/products/${selectedProduct.id}`}>
+                <button className="bp-button bp-button--primary" style={{ width: '100%', marginTop: 8 }}>View Full Details →</button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   )
 }

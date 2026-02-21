@@ -1,4 +1,4 @@
-import { PrismaClient, type ColorType, type CostStatus, type MaterialCategory, type MaterialType, type ProductStatus, type SampleStatus, type SampleType } from '@prisma/client'
+import { PrismaClient, type ColorType, type CostStatus, type MaterialCategory, type MaterialType, type ProductStatus, type Role, type SampleStatus, type SampleType } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { randomUUID } from 'crypto'
 
@@ -132,16 +132,24 @@ async function main() {
   await prisma.sizeGroup.deleteMany()
   await prisma.seasonMaster.deleteMany()
   await prisma.supplier.deleteMany()
-  await prisma.user.deleteMany()
+  await prisma.userRole.deleteMany()
+  await prisma.userMaster.deleteMany()
 
   console.log('Creating users...')
-  await prisma.user.createMany({
-    data: [
-      { email: 'admin@example.com', name: 'Admin User', password, role: 'ADMIN' },
-      { email: 'designer@example.com', name: 'Designer User', password, role: 'DESIGNER' },
-      { email: 'md@example.com', name: 'Merchandiser User', password, role: 'MERCHANDISER' },
-    ],
-  })
+  const users: Array<{ userid: string; email?: string; name: string; role: Role | null }> = [
+    { userid: 'admin',      email: 'admin@example.com',    name: 'Admin User',        role: 'ADMIN' as Role },
+    { userid: 'designer',   email: 'designer@example.com', name: 'Designer User',     role: 'DESIGNER' as Role },
+    { userid: 'md',         email: 'md@example.com',       name: 'Merchandiser User', role: 'BUYER' as Role },
+    { userid: 'techdesign',                                name: 'Tech Design',        role: 'TECHDESIGN' as Role },
+    { userid: 'sourcing',                                  name: 'Sourcing',           role: 'SOURCING' as Role },
+    { userid: 'supplierA',                                 name: 'Supplier A',         role: null },
+  ]
+  for (const { role, ...userData } of users) {
+    const user = await prisma.userMaster.create({ data: { ...userData, password } })
+    if (role) {
+      await prisma.userRole.create({ data: { userId: user.id, role } })
+    }
+  }
 
   console.log('Creating season masters...')
   const seasons = [

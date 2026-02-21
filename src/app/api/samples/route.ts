@@ -28,7 +28,11 @@ export async function GET(req: NextRequest) {
     include: {
       product: { select: { id: true, styleNumber: true, name: true } },
       season: { select: { id: true, seasonName: true, seasonCode: true } },
+      supplier: { select: { id: true, name: true } },
       costs: { orderBy: { createdAt: 'desc' }, take: 1 },
+      sampleColors: {
+        include: { color: { select: { id: true, colorCode: true, colorName: true, colorImage: true } } },
+      },
       _count: { select: { sampleColors: true } },
       sizeMeasurements: { select: { sizeCode: true }, distinct: ['sizeCode'] },
     },
@@ -42,8 +46,15 @@ export async function GET(req: NextRequest) {
   const result = samples.map((s) => ({
     ...s,
     colorCount: s._count.sampleColors,
+    colors: s.sampleColors.map((sc) => ({
+      colorCode: sc.color.colorCode,
+      colorName: sc.color.colorName,
+      colorImage: sc.color.colorImage,
+    })),
+    supplierName: s.supplier?.name || null,
     sizes: s.sizeMeasurements.map((m) => m.sizeCode).filter(Boolean),
     _count: undefined,
+    sampleColors: undefined,
     sizeMeasurements: undefined,
     clo3dFile: undefined,
     patternCadFile: undefined,

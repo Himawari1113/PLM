@@ -10,8 +10,9 @@ datasource db {
 enum Role {
   ADMIN
   DESIGNER
-  MERCHANDISER
-  VIEWER
+  BUYER
+  TECHDESIGN
+  SOURCING
 }
 
 enum ProductStatus {
@@ -28,12 +29,19 @@ enum MaterialType {
   TRIM
   PACKAGING
   OTHER
+  BUTTON
+  ZIPPER
+  WAPPEN
+  YARN
+  HANG_TAG
+  PACKING
 }
 
 enum MaterialCategory {
   MAIN_FABRIC
   SUB_FABRIC
   SUB_MATERIAL
+  TRIM
 }
 
 enum SampleType {
@@ -71,14 +79,24 @@ enum ColorType {
   PATTERN
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+model UserMaster {
+  id        String    @id @default(cuid())
+  userid    String    @unique
+  email     String?
   password  String
   name      String
-  role      Role     @default(VIEWER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userRole  UserRole?
+}
+
+model UserRole {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      UserMaster @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model SeasonMaster {
@@ -117,6 +135,9 @@ model Product {
   description  String?
   status       ProductStatus @default(DRAFT)
   targetPrice  Float?
+  salesStart   DateTime?
+  originalPrice Float?
+  planQty      Int?
   collectionId String?
   collection   Collection?   @relation(fields: [collectionId], references: [id], onDelete: SetNull)
   supplierId   String?
@@ -149,6 +170,9 @@ model Material {
   unitPrice         Float?
   unit              String?            // m, yard, pcs, etc.
   description       String?
+  imageUrl          String?            // base64 data URL
+  originCountry     String?
+  docs              Json?              // Array of { name: string, url: string }
   bomItems          BomItem[]
   supplierMaterials SupplierMaterial[]
   materialColors    MaterialColor[]
@@ -227,6 +251,10 @@ model Sample {
   shippingDestination String?
   fittingComment      String?
   year                Int?
+  salesStart          DateTime?
+  poDeadline          DateTime?
+  originalPrice       Float?
+  planQty             Int?
   seasonId            String?
   season              SeasonMaster? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   division            String?
@@ -247,6 +275,7 @@ model Sample {
   sampleMaterials     SampleMaterial[]
   milestoneProgresses SampleMilestoneProgress[]
   comments            SampleComment[]
+  qualityInspections  QualityInspection[]
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 }
@@ -284,21 +313,27 @@ model TrendItem {
 }
 
 model Color {
-  id          String    @id @default(cuid())
-  colorCode   String
-  colorName   String
-  pantoneCode String?
-  pantoneName String?
-  rgbValue    String?
-  colorImage  String?
-  colorType   ColorType @default(SOLID)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  colorCode        String
+  colorName        String
+  pantoneCode      String?
+  pantoneName      String?
+  rgbValue         String?
+  colorImage       String?
+  colorType        ColorType @default(SOLID)
+  cmykC            Int?      // 0-100
+  cmykM            Int?      // 0-100
+  cmykY            Int?      // 0-100
+  cmykK            Int?      // 0-100
+  colorTemperature String?   // COOL | WARM | NEUTRAL
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   samples        SampleColor[]
   materialColors MaterialColor[]
 
   @@index([colorCode])
   @@index([colorName])
+  @@index([pantoneCode])
 }
 
 model SampleColor {
@@ -520,4 +555,99 @@ model SampleComment {
 
   @@index([sampleId])
   @@index([createdAt])
+}
+
+// ── Quality Management ──────────────────────────
+
+enum QualityInspectionStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  REJECTED
+}
+
+enum QualityResult {
+  PASS
+  FAIL
+  CONDITIONAL
+  NOT_TESTED
+}
+
+enum CareLabelCategory {
+  WASHING
+  BLEACHING
+  DRYING
+  IRONING
+  DRY_CLEANING
+  ADDITIONAL
+}
+
+model QualityInspection {
+  id              String                   @id @default(cuid())
+  sampleId        String
+  sample          Sample                   @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  inspectionType  String                   @default("FINAL")    // INLINE, FINAL, PRE_PRODUCTION
+  inspectionDate  DateTime?
+  inspector       String?
+  overallResult   QualityResult            @default(NOT_TESTED)
+  status          QualityInspectionStatus  @default(DRAFT)
+  remarks         String?                  @db.Text
+  items           QualityInspectionItem[]
+  photos          QualityPhoto[]
+  careLabels      QualityCareLabel[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([sampleId])
+  @@index([status])
+}
+
+model QualityInspectionItem {
+  id              String              @id @default(cuid())
+  inspectionId    String
+  inspection      QualityInspection   @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  category        String              // e.g. "Appearance", "Measurement", "Colorfastness", "Seam Strength"
+  itemName        String              // e.g. "Seam allowance", "Fabric weight"
+  standard        String?             // Expected standard / tolerance
+  actualValue     String?             // Measured / observed value
+  result          QualityResult       @default(NOT_TESTED)
+  remarks         String?
+  sortOrder       Int                 @default(0)
+  isAiGenerated   Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([inspectionId])
+  @@index([category])
+}
+
+model QualityPhoto {
+  id              String            @id @default(cuid())
+  inspectionId    String
+  inspection      QualityInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  imageUrl        String
+  caption         String?
+  photoType       String            @default("GENERAL") // GENERAL, DEFECT, MEASUREMENT, LABEL
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+
+  @@index([inspectionId])
+}
+
+model QualityCareLabel {
+  id              String            @id @default(cuid())
+  inspectionId    String
+  inspection      QualityInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  category        CareLabelCategory
+  symbolCode      String            // ISO 3758 code e.g. "CL-001"
+  symbolName      String            // e.g. "Machine Wash 40°C"
+  symbolSvg       String?           @db.Text  // SVG markup for the symbol
+  description     String?           // Additional text description
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([inspectionId])
+  @@index([category])
 }

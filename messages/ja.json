@@ -39,6 +39,8 @@
     "trends": "トレンド",
     "samples": "サンプル",
     "financialPlan": "Financial Plan",
+    "cost": "原価管理",
+    "quality": "品質管理",
     "brandSub": "製品ライフサイクル管理"
   },
   "colors": {
@@ -104,7 +106,7 @@
     "subCategoryFilter": "Sub Categoryで絞り込み"
   },
   "materials": {
-    "title": "素材管理",
+    "title": "Material Master",
     "newMaterial": "New Material",
     "editMaterial": "素材編集",
     "name": "素材名",
@@ -314,16 +316,16 @@
     "rgbValue": "RGB"
   },
   "login": {
-    "title": "Apparel PLM",
+    "title": "Product Cockpit",
     "subtitle": "アカウントにログインしてください",
-    "email": "メールアドレス",
+    "userid": "ユーザーID",
     "password": "パスワード",
     "loginButton": "ログイン",
     "loggingIn": "ログイン中...",
-    "error": "メールアドレスまたはパスワードが正しくありません",
+    "error": "ユーザーIDまたはパスワードが正しくありません",
     "errorSubtext": "入力内容を確認してください",
     "demoAccount": "デモアカウント",
-    "emailPlaceholder": "admin@example.com",
+    "useridPlaceholder": "admin",
     "passwordPlaceholder": "パスワードを入力"
   },
   "header": {
